@@ -1,8 +1,10 @@
 using System;
 using CodeBase.Infrastructure.FSM;
+using CodeBase.Infrastructure.Services;
 using CodeBase.Infrastructure.Services.Asset;
 using CodeBase.Infrastructure.Services.Config;
 using Fusion;
+using MessagePipe;
 using Scellecs.Morpeh;
 using UnityEngine;
 using VContainer;
@@ -25,6 +27,13 @@ namespace CodeBase.Infrastructure
             RegisterStateMachine(builder);
             RegisterEntryPoint(builder);
             RegisterNetworkRunner(builder);
+            RegisterMessagePipe(builder);
+        }
+
+        private static void RegisterMessagePipe(IContainerBuilder builder)
+        {
+            MessagePipeOptions options = builder.RegisterMessagePipe();
+            
         }
 
         private void RegisterNetworkRunner(IContainerBuilder builder) =>
@@ -32,7 +41,7 @@ namespace CodeBase.Infrastructure
                 .As<NetworkRunner>()
                 .AsSelf()
                 .AsImplementedInterfaces();
-        
+
         private void RegisterStateMachine(IContainerBuilder builder) =>
             builder.Register<IStateMachine, StateMachine>(Lifetime.Singleton);
 

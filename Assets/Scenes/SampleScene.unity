@@ -390,6 +390,8 @@ GameObject:
   m_Component:
   - component: {fileID: 725925417}
   - component: {fileID: 725925416}
+  - component: {fileID: 725925419}
+  - component: {fileID: 725925418}
   m_Layer: 0
   m_Name: EntryPoint
   m_TagString: Untagged
@@ -413,7 +415,8 @@ MonoBehaviour:
     TypeName: 
   autoRun: 1
   autoInjectGameObjects: []
-  _networkObjectsConfig: {fileID: 11400000, guid: 9bb1d12587500e040b6b668a894ae8d9, type: 2}
+  _networkRunner: {fileID: 725925419}
+  _networkUpdateObserverPrefab: {fileID: 714492598816099695, guid: 61d627e47e77b764badf898651c8bca2, type: 3}
 --- !u!4 &725925417
 Transform:
   m_ObjectHideFlags: 0
@@ -429,6 +432,30 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &725925418
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 725925415}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8edbe7108d8a43ab838cf8b8d9453df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &725925419
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 725925415}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1199893898, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0

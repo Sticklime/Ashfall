@@ -1,4 +1,6 @@
-﻿using Fusion;
+﻿using System;
+using Fusion;
+using UnityEngine;
 
 namespace CodeBase.Infrastructure.FSM.State
 {
@@ -17,22 +19,29 @@ namespace CodeBase.Infrastructure.FSM.State
 
         public async void Enter()
         {
+            var networkSceneManagerDefault = _networkRunner.gameObject.AddComponent<NetworkSceneManagerDefault>();
+            
             var startGameArgs = new StartGameArgs
             {
                 GameMode = GameMode.Host,
                 SessionName = "DefaultRoom",
-                PlayerCount = 2,
-                SceneManager = _networkRunner.gameObject.AddComponent<NetworkSceneManagerDefault>()
+                PlayerCount = 5,
+                SceneManager = networkSceneManagerDefault
             };
 
             var result = await _networkRunner.StartGame(startGameArgs);
 
             if (result.Ok)
+            {
+                Debug.Log("Server started");
                 _stateMachine.Enter<LoadLevelState>();
+            }
             else
-                UnityEngine.Debug.LogError($"Server start failed: {result.ShutdownReason}");
+                Debug.LogError($"Server start failed: {result.ErrorMessage}");
         }
 
-        public void Exit() { }
+        public void Exit()
+        {
+        }
     }
 }

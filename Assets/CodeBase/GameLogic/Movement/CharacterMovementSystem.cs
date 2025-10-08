@@ -1,4 +1,5 @@
 ﻿using CodeBase.GameLogic.Common;
+using CodeBase.GameLogic.Input;
 using Scellecs.Morpeh;
 using UnityEngine;
 

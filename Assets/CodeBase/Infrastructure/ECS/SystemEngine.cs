@@ -1,4 +1,5 @@
-﻿using CodeBase.GameLogic.Input;
+﻿using CodeBase.GameLogic;
+using CodeBase.GameLogic.Input;
 using CodeBase.GameLogic.Movement;
 using CodeBase.GameLogic.PickUp;
 using Scellecs.Morpeh;
@@ -39,13 +40,12 @@ public class SystemEngine
         _gameLogicGroup.AddSystem(AddSystem<JumpSystem>());
         _gameLogicGroup.AddSystem(AddSystem<GravitySystem>());
         _gameLogicGroup.AddSystem(AddSystem<InteractSystem>());
-        _gameLogicGroup.AddSystem(AddSystem<InputSystem>());
-        _gameLogicGroup.AddSystem(AddSystem<InputConnectorSystem>());
+        _gameLogicGroup.AddSystem(AddSystem<NetworkInputApplySystem>());
 
         _world.Commit();
     }
 
-    private TSystem AddSystem<TSystem>() where TSystem : ISystem =>
+    private TSystem AddSystem<TSystem>() where TSystem : IInitializer =>
         _resolver.CreateScope(builder => builder.Register<TSystem>(Lifetime.Singleton)).Resolve<TSystem>();
 
     public void Tick() =>

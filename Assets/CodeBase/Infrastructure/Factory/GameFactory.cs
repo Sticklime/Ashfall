@@ -1,4 +1,5 @@
 ﻿using CodeBase.Config.Player;
+using CodeBase.GameLogic.Camera;
 using CodeBase.GameLogic.Common;
 using CodeBase.GameLogic.Input;
 using CodeBase.Infrastructure.Services.Asset;
@@ -7,7 +8,9 @@ using Cysharp.Threading.Tasks;
 using Fusion;
 using Scellecs.Morpeh;
 using UnityEngine;
-using Input = CodeBase.GameLogic.Common.Input;
+using VContainer;
+using VContainer.Unity;
+using Input = CodeBase.GameLogic.Input.Input;
 
 public class GameFactory : IGameFactory
 {
@@ -15,68 +18,71 @@ public class GameFactory : IGameFactory
     private readonly IAssetProvider _assetProvider;
     private readonly World _world;
     private readonly NetworkRunner _networkRunner;
+    private readonly IObjectResolver _objectResolver;
 
     public GameFactory(IConfigProvider configProvider, IAssetProvider assetProvider, World world,
-        NetworkRunner networkRunner)
+        NetworkRunner networkRunner, IObjectResolver objectResolver)
     {
         _configProvider = configProvider;
         _assetProvider = assetProvider;
         _world = world;
         _networkRunner = networkRunner;
+        _objectResolver = objectResolver;
     }
 
-    public async UniTask<GameObject> CreatePlayer(int playerId)
+    public async UniTask<GameObject> CreatePlayer(PlayerRef playerRef)
     {
         PlayerConfig playerConfig = await _configProvider.GetConfig();
         GameObject playerPrefab = await _assetProvider.LoadAsync<GameObject>(playerConfig.PlayerReference);
 
-        var networkObject = _networkRunner.Spawn(playerPrefab, Vector3.zero, Quaternion.identity);
+        var networkObject = _networkRunner.Spawn(playerPrefab, Vector3.zero, Quaternion.identity, playerRef);
         GameObject playerInstance = networkObject.gameObject;
+        _objectResolver.InjectGameObject(playerInstance);
 
         Entity playerEntity = _world.CreateEntity();
 
+        NetworkInputReceiver networkInputReceiver = playerInstance.GetComponentInChildren<NetworkInputReceiver>();
+        SetterPlayerCamera setterPlayerCamera = playerInstance.GetComponentInChildren<SetterPlayerCamera>();
+
+        networkInputReceiver.Construct(playerRef);
+        setterPlayerCamera.Construct(playerRef);
+
         playerEntity.AddComponent<PlayerTag>();
         AddPositionComponent(ref playerEntity, Vector3.zero);
-        AddCameraRotationComponent(ref playerEntity, playerInstance.GetComponentInChildren<Camera>(), 10f);
+        AddCameraRotationComponent(ref playerEntity, 10f);
         AddMoveComponent(ref playerEntity, 10f, 40f);
         AddCharacterControllerComponent(ref playerEntity, playerInstance.GetComponent<CharacterController>());
         AddTransformComponent(ref playerEntity, playerInstance.transform);
         AddRigidbodyComponent(ref playerEntity, playerInstance.GetComponent<Rigidbody>());
         AddJumpComponent(ref playerEntity, 5f);
         AddPhysicComponent(ref playerEntity, 50f, 0.2f, LayerMask.GetMask("Ground"));
-        AddOwnerComponent(ref playerEntity, playerId);
-        AddInputComponent(ref playerEntity, new Input(), playerId);
+        AddOwnerComponent(ref playerEntity, playerRef);
+        AddInputComponent(ref playerEntity, new Input(), networkInputReceiver);
+        AddCameraComponent(ref playerRef, playerEntity, playerInstance);
 
         _world.Commit();
         return playerInstance;
     }
 
-    public void CreateInputEntity(int playerId)
+    private static void AddCameraComponent(ref PlayerRef playerRef, Entity playerEntity, GameObject playerInstance)
     {
-        Entity playerEntity = _world.CreateEntity();
+        ref var cameraComponent = ref playerEntity.AddComponent<CameraComponent>();
 
-        AddNetworkInput(ref playerEntity, playerId);
-        AddOwnerComponent(ref playerEntity, playerId);
+        cameraComponent.Camera = playerInstance.GetComponentInChildren<Camera>();
+        cameraComponent.Owned = playerRef;
     }
 
-    private static void AddNetworkInput(ref Entity playerEntity, int id)
-    {
-        ref var inputNetwork = ref playerEntity.AddComponent<InputNetworkComponent>();
-        inputNetwork.PlayerInput = new Input();
-        inputNetwork.OwnerId = id;
-    }
-
-    private void AddInputComponent(ref Entity playerEntity, Input input, int ownerID)
+    private void AddInputComponent(ref Entity playerEntity, Input input, NetworkInputReceiver receiver)
     {
         ref var inputComponent = ref playerEntity.AddComponent<InputComponent>();
+        inputComponent.NetworkInputReceiver = receiver;
         inputComponent.PlayerInput = input;
-        inputComponent.OwnerId = ownerID;
     }
 
-    private void AddOwnerComponent(ref Entity playerEntity, int id)
+    private void AddOwnerComponent(ref Entity playerEntity, PlayerRef owner)
     {
-        ref var ownerComponent = ref playerEntity.AddComponent<OwnerIdComponent>();
-        ownerComponent.OwnerID = id;
+        ref var ownerComponent = ref playerEntity.AddComponent<OwnerComponent>();
+        ownerComponent.Owner = owner;
     }
 
     private void AddPhysicComponent(ref Entity playerEntity, float gravity, float checkGroundDistance,
@@ -126,16 +132,14 @@ public class GameFactory : IGameFactory
         moveComponent.SprintSpeed = sprintSpeed;
     }
 
-    private void AddCameraRotationComponent(ref Entity playerEntity, Camera camera, float cameraSensitivity)
+    private void AddCameraRotationComponent(ref Entity playerEntity, float cameraSensitivity)
     {
         ref var cameraRotationComponent = ref playerEntity.AddComponent<CameraRotationComponent>();
         cameraRotationComponent.Sensitivity = cameraSensitivity;
-        cameraRotationComponent.Camera = camera;
     }
 }
 
 public interface IGameFactory
 {
-    UniTask<GameObject> CreatePlayer(int playerId);
-    void CreateInputEntity(int playerId);
+    UniTask<GameObject> CreatePlayer(PlayerRef playerRef);
 }

@@ -18,10 +18,11 @@ public class EntryPoint : IStartable, ITickable, IFixedTickable, ILateTickable, 
     public void Start()
     {
         _stateMachine.RegisterState<BootState>();
-        _stateMachine.RegisterState<LoadLevelState>();
         _stateMachine.RegisterState<ConnectToServerState>();
-        _stateMachine.RegisterState<ServerLoopState>();
         _stateMachine.RegisterState<StartServerState>();
+        _stateMachine.RegisterState<LoadLevelState>();
+        _stateMachine.RegisterState<ServerLoopState>();
+        _stateMachine.RegisterState<ClientLoopState>();
 
         _stateMachine.Enter<BootState>();
     }

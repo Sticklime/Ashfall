@@ -1,4 +1,5 @@
-﻿using Cysharp.Threading.Tasks;
+﻿
+using Cysharp.Threading.Tasks;
 using Fusion;
 using UnityEngine;
 
@@ -10,15 +11,16 @@ namespace CodeBase.Infrastructure.FSM.State
         private readonly IGameFactory _gameFactory;
         private readonly NetworkRunner _networkRunner;
 
-        public ConnectToServerState(IStateMachine stateMachine, IGameFactory gameFactory)
+        public ConnectToServerState(IStateMachine stateMachine, IGameFactory gameFactory, NetworkRunner networkRunner)
         {
             _stateMachine = stateMachine;
             _gameFactory = gameFactory;
-            _networkRunner = new GameObject("NetworkRunner").AddComponent<NetworkRunner>();
+            _networkRunner = networkRunner;
         }
 
         public async void Enter()
         {
+            await UniTask.Delay(2000);
             var startGameArgs = new StartGameArgs
             {
                 GameMode = GameMode.Client,
@@ -31,7 +33,7 @@ namespace CodeBase.Infrastructure.FSM.State
             if (result.Ok)
             {
                 await UniTask.Delay(1000);
-                _gameFactory.CreateInputEntity(_networkRunner.LocalPlayer.PlayerId);
+                _stateMachine.Enter<ClientLoopState>();
             }
             else
             {

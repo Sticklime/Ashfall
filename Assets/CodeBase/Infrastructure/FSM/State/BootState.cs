@@ -1,3 +1,5 @@
+using Fusion;
+
 namespace CodeBase.Infrastructure.FSM.State
 {
     public class BootState : IState

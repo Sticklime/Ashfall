@@ -1,4 +1,3 @@
-using Cysharp.Threading.Tasks;
 using Fusion;
 
 namespace CodeBase.Infrastructure.FSM.State
@@ -18,17 +17,7 @@ namespace CodeBase.Infrastructure.FSM.State
 
         public void Enter()
         {
-            var localPlayer = _networkRunner.LocalPlayer;
-            _gameFactory.CreatePlayer(localPlayer.PlayerId);
-            _gameFactory.CreateInputEntity(localPlayer.PlayerId);
-
             _stateMachine.Enter<ServerLoopState>();
-        }
-
-        private async UniTask CreatePlayer(PlayerRef player)
-        {
-            await UniTask.Delay(5000);
-            _gameFactory.CreatePlayer(player.PlayerId);
         }
 
         public void Exit()

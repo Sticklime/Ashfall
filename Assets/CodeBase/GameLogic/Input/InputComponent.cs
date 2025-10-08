@@ -1,15 +1,16 @@
-﻿using Scellecs.Morpeh;
+﻿using Fusion;
+using Scellecs.Morpeh;
 using UnityEngine;
 
-namespace CodeBase.GameLogic.Common
+namespace CodeBase.GameLogic.Input
 {
     public struct InputComponent : IComponent
     {
-        public int OwnerId;
+        public NetworkInputReceiver NetworkInputReceiver;
         public Input PlayerInput;
     }
 
-    public struct Input
+    public struct Input : INetworkInput
     {
         public Vector2 Move;
         public Vector2 Look;
