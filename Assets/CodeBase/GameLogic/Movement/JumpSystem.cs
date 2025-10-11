@@ -5,27 +5,24 @@ using UnityEngine;
 
 public class JumpSystem : ISystem
 {
+    private Filter _filter;
     public World World { get; set; }
-
-    public JumpSystem()
-    {
-    }
 
     public void OnAwake()
     {
-    }
-
-    public void OnUpdate(float deltaTime)
-    {
-        var filter = World.Filter
+         _filter = World.Filter
             .With<CharacterControllerComponent>()
             .With<JumpComponent>()
             .With<PhysicsComponent>()
             .With<InputComponent>()
+            .With<RigidbodyComponent>()
             .With<PlayerTag>()
             .Build();
+    }
 
-        foreach (var entity in filter)
+    public void OnUpdate(float deltaTime)
+    {
+        foreach (var entity in _filter)
         {
             ref var controllerComponent = ref entity.GetComponent<CharacterControllerComponent>();
             ref var jumpComponent = ref entity.GetComponent<JumpComponent>();
@@ -34,8 +31,10 @@ public class JumpSystem : ISystem
 
             var characterController = controllerComponent.Controller;
 
+            Debug.Log($"Jump Triggerd {input.PlayerInput.JumpTriggered}");
+            Debug.Log($"Is Grounded {physicsComponent.IsGrounded}");
             if (input.PlayerInput.JumpTriggered && physicsComponent.IsGrounded)
-                physicsComponent.Velocity.y = Mathf.Sqrt(jumpComponent.JumpForce * 2f * physicsComponent.Gravity);
+                physicsComponent.Velocity.y = Mathf.Sqrt(jumpComponent.JumpForce * 2f * physicsComponent.Weight);
 
             Vector3 moveVector = new Vector3(0, physicsComponent.Velocity.y, 0);
             characterController.Move(moveVector * deltaTime);

@@ -90,8 +90,7 @@ namespace CodeBase.Infrastructure.FSM.State
                 JumpTriggered = _inputService.JumpTriggered,
                 SprintProgress = _inputService.SprintProgress
             };
-
-
+            
             input.Set(data);
         }
 

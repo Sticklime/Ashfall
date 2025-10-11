@@ -13,7 +13,7 @@ namespace CodeBase.Infrastructure.Services.Config
             _assetProvider = assetProvider;
         }
 
-        public async UniTask<PlayerConfig> GetConfig()
+        public async UniTask<PlayerConfig> GetPlayerConfig()
         {
             return await _assetProvider.LoadAsync<PlayerConfig>("PlayerConfig");
         }
@@ -21,6 +21,6 @@ namespace CodeBase.Infrastructure.Services.Config
 
     public interface IConfigProvider
     {
-        UniTask<PlayerConfig> GetConfig();
+        UniTask<PlayerConfig> GetPlayerConfig();
     }
 }

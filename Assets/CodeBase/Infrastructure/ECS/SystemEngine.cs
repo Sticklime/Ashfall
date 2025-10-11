@@ -1,5 +1,4 @@
-﻿using CodeBase.GameLogic;
-using CodeBase.GameLogic.Input;
+﻿using CodeBase.GameLogic.Input;
 using CodeBase.GameLogic.Movement;
 using CodeBase.GameLogic.PickUp;
 using Scellecs.Morpeh;
@@ -28,7 +27,6 @@ public class SystemEngine
     private void InitializeSystemGroup()
     {
         _gameLogicGroup = _world.CreateSystemsGroup();
-
         _world.AddSystemsGroup(order: 0, _gameLogicGroup);
     }
 

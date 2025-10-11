@@ -1,7 +1,9 @@
-﻿using CodeBase.Config.Player;
+﻿using System;
+using CodeBase.Config.Player;
 using CodeBase.GameLogic.Camera;
 using CodeBase.GameLogic.Common;
 using CodeBase.GameLogic.Input;
+using CodeBase.GameLogic.PickUp;
 using CodeBase.Infrastructure.Services.Asset;
 using CodeBase.Infrastructure.Services.Config;
 using Cysharp.Threading.Tasks;
@@ -32,7 +34,7 @@ public class GameFactory : IGameFactory
 
     public async UniTask<GameObject> CreatePlayer(PlayerRef playerRef)
     {
-        PlayerConfig playerConfig = await _configProvider.GetConfig();
+        PlayerConfig playerConfig = await _configProvider.GetPlayerConfig();
         GameObject playerPrefab = await _assetProvider.LoadAsync<GameObject>(playerConfig.PlayerReference);
 
         var networkObject = _networkRunner.Spawn(playerPrefab, Vector3.zero, Quaternion.identity, playerRef);
@@ -42,29 +44,37 @@ public class GameFactory : IGameFactory
         Entity playerEntity = _world.CreateEntity();
 
         NetworkInputReceiver networkInputReceiver = playerInstance.GetComponentInChildren<NetworkInputReceiver>();
-        SetterPlayerCamera setterPlayerCamera = playerInstance.GetComponentInChildren<SetterPlayerCamera>();
 
         networkInputReceiver.Construct(playerRef);
-        setterPlayerCamera.Construct(playerRef);
 
         playerEntity.AddComponent<PlayerTag>();
         AddPositionComponent(ref playerEntity, Vector3.zero);
-        AddCameraRotationComponent(ref playerEntity, 10f);
-        AddMoveComponent(ref playerEntity, 10f, 40f);
+        AddCameraRotationComponent(ref playerEntity, playerConfig.CameraSensitivityDefault);
+        AddMoveComponent(ref playerEntity, playerConfig.MoveSpeed, playerConfig.SprintSpeed);
         AddCharacterControllerComponent(ref playerEntity, playerInstance.GetComponent<CharacterController>());
         AddTransformComponent(ref playerEntity, playerInstance.transform);
         AddRigidbodyComponent(ref playerEntity, playerInstance.GetComponent<Rigidbody>());
-        AddJumpComponent(ref playerEntity, 5f);
-        AddPhysicComponent(ref playerEntity, 50f, 0.2f, LayerMask.GetMask("Ground"));
+        AddJumpComponent(ref playerEntity, playerConfig.JumpForce);
+        AddPhysicComponent(ref playerEntity, playerConfig.Weight, playerConfig.CheckGroundDistance, playerConfig.GroundCheckLayer);
         AddOwnerComponent(ref playerEntity, playerRef);
         AddInputComponent(ref playerEntity, new Input(), networkInputReceiver);
         AddCameraComponent(ref playerRef, playerEntity, playerInstance);
+        AddInteractComponent(ref playerEntity, playerConfig.InteractDistance, playerConfig.InteractMask);
+
 
         _world.Commit();
         return playerInstance;
     }
 
-    private static void AddCameraComponent(ref PlayerRef playerRef, Entity playerEntity, GameObject playerInstance)
+    private void AddInteractComponent(ref Entity playerEntity, float interactDistance, LayerMask interactMask)
+    {
+        ref var interactComponent = ref playerEntity.AddComponent<InteractComponent>();
+
+        interactComponent.InteractDistance = interactDistance;
+        interactComponent.InteractMask = interactMask;
+    }
+
+    private void AddCameraComponent(ref PlayerRef playerRef, Entity playerEntity, GameObject playerInstance)
     {
         ref var cameraComponent = ref playerEntity.AddComponent<CameraComponent>();
 
@@ -85,11 +95,12 @@ public class GameFactory : IGameFactory
         ownerComponent.Owner = owner;
     }
 
-    private void AddPhysicComponent(ref Entity playerEntity, float gravity, float checkGroundDistance,
+    private void AddPhysicComponent(ref Entity playerEntity, float weight, float checkGroundDistance,
         LayerMask layerMask)
     {
         ref var physicsComponent = ref playerEntity.AddComponent<PhysicsComponent>();
-        physicsComponent.Gravity = gravity;
+        
+        physicsComponent.Weight = weight;
         physicsComponent.CheckGroundDistance = checkGroundDistance;
         physicsComponent.LayerGround = layerMask;
     }

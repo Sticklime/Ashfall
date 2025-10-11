@@ -4,51 +4,74 @@ using UnityEngine;
 
 namespace CodeBase.GameLogic.Movement
 {
-    public class GravitySystem : ISystem
+    public class GravitySystem : IFixedSystem
     {
-        private Collider[] _result = new Collider[2];
+        private Filter _physicFilter;
+        private readonly RaycastHit[] _hits = new RaycastHit[1];
+
         public World World { get; set; }
 
-        public void Dispose()
+        public void OnAwake()
         {
+            _physicFilter = World.Filter
+                .With<PhysicsComponent>()
+                .With<TransformComponent>()
+                .Build();
         }
 
         public void OnUpdate(float deltaTime)
         {
-            var physicFilter = World.Filter
-                .With<PhysicsComponent>()
-                .With<TransformComponent>()
-                .Build();
-
-            foreach (var entity in physicFilter)
+            foreach (var entity in _physicFilter)
             {
                 ref var physic = ref entity.GetComponent<PhysicsComponent>();
                 ref var transform = ref entity.GetComponent<TransformComponent>();
 
                 var transformRef = transform.Transform;
-                bool isGrounded = IsGrounded(transformRef, physic.CheckGroundDistance, physic.LayerGround);
+                bool isGrounded = TryGetGroundPoint(transformRef, physic.CheckGroundDistance, physic.LayerGround, out var groundPoint);
 
                 if (!isGrounded)
                 {
-                    physic.Velocity += Vector3.down * physic.Gravity * deltaTime;
+                    physic.Velocity += Vector3.down * physic.Weight * deltaTime;
                     transformRef.position += physic.Velocity * deltaTime;
                 }
                 else
                 {
                     physic.Velocity = Vector3.zero;
+                    
+                    Vector3 targetPosition = new Vector3(
+                        transformRef.position.x,
+                        groundPoint.y + physic.CheckGroundDistance,
+                        transformRef.position.z
+                    );
+
+                    transformRef.position = targetPosition;
                 }
 
                 physic.IsGrounded = isGrounded;
+
+                Debug.DrawRay(transformRef.position, Vector3.down * physic.CheckGroundDistance,
+                    isGrounded ? Color.green : Color.red);
             }
         }
-
-        private bool IsGrounded(Transform transform, float checkGroundDistance, LayerMask layerGround)
+        
+        private bool TryGetGroundPoint(Transform transform, float checkGroundDistance, LayerMask layerGround, out Vector3 groundPoint)
         {
-            return Physics.OverlapSphereNonAlloc(transform.position, 0.3f, _result, layerGround) > 0;
+            float skinOffset = 0.1f;
+            Vector3 origin = transform.position + Vector3.up * skinOffset;
+
+            if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, checkGroundDistance + skinOffset, layerGround))
+            {
+                groundPoint = hit.point;
+                return true;
+            }
+
+            groundPoint = Vector3.zero;
+            return false;
         }
 
-        public void OnAwake()
+        public void Dispose()
         {
+            _physicFilter = null;
         }
     }
 }

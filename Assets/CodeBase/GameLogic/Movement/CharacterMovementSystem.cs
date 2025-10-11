@@ -5,22 +5,22 @@ using UnityEngine;
 
 public class CharacterMovementSystem : ISystem
 {
+    private Filter _filter;
     public World World { get; set; }
 
     public void OnAwake()
     {
-    }
-
-    public void OnUpdate(float deltaTime)
-    {
-        var filter = World.Filter
+        _filter = World.Filter
             .With<MoveComponent>()
             .With<CharacterControllerComponent>()
             .With<TransformComponent>()
             .With<PlayerTag>()
             .Build();
+    }
 
-        foreach (var entity in filter)
+    public void OnUpdate(float deltaTime)
+    {
+        foreach (var entity in _filter)
         {
             ref var moveComponent = ref entity.GetComponent<MoveComponent>();
             ref var controllerComponent = ref entity.GetComponent<CharacterControllerComponent>();

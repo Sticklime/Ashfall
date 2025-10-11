@@ -1,8 +1,5 @@
-﻿using CodeBase.GameLogic.Common;
-using CodeBase.Infrastructure;
-using Fusion;
+﻿using Fusion;
 using Scellecs.Morpeh;
-using UnityEngine;
 
 namespace CodeBase.GameLogic.Input
 {
@@ -11,6 +8,7 @@ namespace CodeBase.GameLogic.Input
         public World World { get; set; }
 
         private NetworkRunner _runner;
+        private Filter _filter;
 
         public NetworkInputApplySystem(NetworkRunner runner)
         {
@@ -19,15 +17,15 @@ namespace CodeBase.GameLogic.Input
 
         public void OnAwake()
         {
+            _filter = World.Filter
+                .With<InputComponent>()
+                .Build();
+
         }
 
         public void OnUpdate(float deltaTime)
         {
-            var filter = World.Filter
-                .With<InputComponent>()
-                .Build();
-
-            foreach (var entity in filter)
+            foreach (var entity in _filter)
             {
                 ref var inputComponent = ref entity.GetComponent<InputComponent>();
                 

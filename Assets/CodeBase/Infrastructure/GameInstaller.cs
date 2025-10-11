@@ -33,7 +33,6 @@ namespace CodeBase.Infrastructure
         private static void RegisterMessagePipe(IContainerBuilder builder)
         {
             MessagePipeOptions options = builder.RegisterMessagePipe();
-            
         }
 
         private void RegisterNetworkRunner(IContainerBuilder builder) =>

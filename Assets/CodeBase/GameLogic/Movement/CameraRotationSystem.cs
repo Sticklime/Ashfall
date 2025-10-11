@@ -5,23 +5,23 @@ using UnityEngine;
 
 public class CameraRotationSystem : ISystem
 {
+    private Filter _filter;
     public World World { get; set; }
 
     public void OnAwake()
     {
-    }
-
-    public void OnUpdate(float deltaTime)
-    {
-        var filter = World.Filter
+        _filter = World.Filter
             .With<CameraRotationComponent>()
             .With<TransformComponent>()
             .With<InputComponent>()
             .With<CameraComponent>()
             .With<PlayerTag>()
             .Build();
+    }
 
-        foreach (var entity in filter)
+    public void OnUpdate(float deltaTime)
+    {
+        foreach (var entity in _filter)
         {
             ref var rotation = ref entity.GetComponent<CameraRotationComponent>();
             ref var camera = ref entity.GetComponent<CameraComponent>();
@@ -34,11 +34,11 @@ public class CameraRotationSystem : ISystem
             float verticalRotation = -lookInput.y * rotation.Sensitivity * deltaTime;
 
             rotation.VerticalAngle += verticalRotation;
+            rotation.HorizontalAngle += horizontalRotation;
             rotation.VerticalAngle = Mathf.Clamp(rotation.VerticalAngle, -90f, 90f);
 
             camera.Camera.transform.localEulerAngles = new Vector3(rotation.VerticalAngle, 0f, 0f);
-
-            mount.Transform.Rotate(0f, horizontalRotation, 0f);
+            mount.Transform.localEulerAngles = new Vector3(0f, rotation.HorizontalAngle, 0f);
         }
     }
 
