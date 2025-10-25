@@ -1,9 +1,12 @@
 ﻿using Scellecs.Morpeh;
 
-public struct CameraRotationComponent : IComponent
+namespace CodeBase.GameLogic.Movement
 {
-    public float Sensitivity;
-    public float VerticalAngle;
-    public float HorizontalAngle;
+    public struct CameraRotationComponent : IComponent
+    {
+        public float Sensitivity;
+        public float VerticalAngle;
+        public float HorizontalAngle;
     
+    }
 }

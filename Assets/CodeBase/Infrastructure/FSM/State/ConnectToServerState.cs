@@ -1,4 +1,5 @@
 ﻿
+using CodeBase.Infrastructure.Factory;
 using Cysharp.Threading.Tasks;
 using Fusion;
 using UnityEngine;
@@ -27,7 +28,7 @@ namespace CodeBase.Infrastructure.FSM.State
                 SessionName = "DefaultRoom",
                 SceneManager = _networkRunner.gameObject.AddComponent<NetworkSceneManagerDefault>()
             };
-
+            
             var result = await _networkRunner.StartGame(startGameArgs);
 
             if (result.Ok)

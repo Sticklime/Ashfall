@@ -1,4 +1,5 @@
 ﻿using CodeBase.GameLogic.Common;
+using CodeBase.GameLogic.Movement;
 using Scellecs.Morpeh;
 using UnityEngine;
 
@@ -31,7 +32,8 @@ namespace CodeBase.GameLogic.PickUp
                 var origin = transformComponent.Camera.transform.position;
                 var direction = transformComponent.Camera.transform.forward;
 
-                int hitCount = Physics.RaycastNonAlloc(origin, direction, _hits, interactComponent.InteractDistance,
+                int hitCount = UnityEngine.Physics.RaycastNonAlloc(origin, direction, _hits,
+                    interactComponent.InteractDistance,
                     interactComponent.InteractMask);
 
                 if (hitCount > 0)

@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using CodeBase.Infrastructure.Factory;
+using CodeBase.Infrastructure.Services.Input;
 using Fusion;
 using Fusion.Sockets;
 using MessagePipe;
@@ -90,7 +92,7 @@ namespace CodeBase.Infrastructure.FSM.State
                 JumpTriggered = _inputService.JumpTriggered,
                 SprintProgress = _inputService.SprintProgress
             };
-            
+
             input.Set(data);
         }
 

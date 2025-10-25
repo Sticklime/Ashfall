@@ -1,9 +1,11 @@
 ﻿using Fusion;
 using Scellecs.Morpeh;
-using UnityEngine;
 
-public struct CameraComponent : IComponent
+namespace CodeBase.GameLogic.Movement
 {
-    public Camera Camera;
-    public PlayerRef Owned;
+    public struct CameraComponent : IComponent
+    {
+        public UnityEngine.Camera Camera;
+        public PlayerRef Owned;
+    }
 }

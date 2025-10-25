@@ -1,8 +1,11 @@
 using System;
+using CodeBase.Infrastructure.ECS;
+using CodeBase.Infrastructure.Factory;
 using CodeBase.Infrastructure.FSM;
 using CodeBase.Infrastructure.Services;
 using CodeBase.Infrastructure.Services.Asset;
 using CodeBase.Infrastructure.Services.Config;
+using CodeBase.Infrastructure.Services.Input;
 using Fusion;
 using MessagePipe;
 using Scellecs.Morpeh;
@@ -28,6 +31,7 @@ namespace CodeBase.Infrastructure
             RegisterEntryPoint(builder);
             RegisterNetworkRunner(builder);
             RegisterMessagePipe(builder);
+            DontDestroyOnLoad(gameObject);
         }
 
         private static void RegisterMessagePipe(IContainerBuilder builder)

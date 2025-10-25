@@ -1,66 +1,71 @@
-﻿using CodeBase.GameLogic.Input;
+﻿using CodeBase.GameLogic.CustomPhysics;
+using CodeBase.GameLogic.Input;
 using CodeBase.GameLogic.Movement;
 using CodeBase.GameLogic.PickUp;
 using Scellecs.Morpeh;
 using UnityEngine;
 using VContainer;
 
-public class SystemEngine
+namespace CodeBase.Infrastructure.ECS
 {
-    private readonly World _world;
-    private readonly IObjectResolver _resolver;
-
-    private SystemsGroup _gameLogicGroup;
-
-    public SystemEngine(World world, IObjectResolver resolver)
+    public class SystemEngine
     {
-        _world = world;
-        _resolver = resolver;
-    }
+        private readonly World _world;
+        private readonly IObjectResolver _resolver;
 
-    public void Initialize()
-    {
-        InitializeSystemGroup();
-        InitializeSystem();
-    }
+        private SystemsGroup _gameLogicGroup;
 
-    private void InitializeSystemGroup()
-    {
-        _gameLogicGroup = _world.CreateSystemsGroup();
-        _world.AddSystemsGroup(order: 0, _gameLogicGroup);
-    }
+        public SystemEngine(World world, IObjectResolver resolver)
+        {
+            _world = world;
+            _resolver = resolver;
+        }
 
-    private void InitializeSystem()
-    {
-        _gameLogicGroup.AddSystem(AddSystem<CameraRotationSystem>());
-        _gameLogicGroup.AddSystem(AddSystem<CharacterMovementSystem>());
-        _gameLogicGroup.AddSystem(AddSystem<SprintSystem>());
-        _gameLogicGroup.AddSystem(AddSystem<JumpSystem>());
-        _gameLogicGroup.AddSystem(AddSystem<GravitySystem>());
-        _gameLogicGroup.AddSystem(AddSystem<InteractSystem>());
-        _gameLogicGroup.AddSystem(AddSystem<NetworkInputApplySystem>());
+        public void Initialize()
+        {
+            InitializeSystemGroup();
+            InitializeSystem();
+        }
 
-        _world.Commit();
-    }
+        private void InitializeSystemGroup()
+        {
+            _gameLogicGroup = _world.CreateSystemsGroup();
+            _world.AddSystemsGroup(order: 0, _gameLogicGroup);
+        }
 
-    private TSystem AddSystem<TSystem>() where TSystem : IInitializer =>
-        _resolver.CreateScope(builder => builder.Register<TSystem>(Lifetime.Singleton)).Resolve<TSystem>();
+        private void InitializeSystem()
+        {
+            _gameLogicGroup.AddSystem(AddSystem<NetworkInputApplySystem>());
+            _gameLogicGroup.AddSystem(AddSystem<CameraRotationSystem>());
+            _gameLogicGroup.AddSystem(AddSystem<CharacterMovementSystem>());
+            _gameLogicGroup.AddSystem(AddSystem<SprintSystem>());
+            _gameLogicGroup.AddSystem(AddSystem<JumpSystem>());
+            _gameLogicGroup.AddSystem(AddSystem<GroundCheckSystem>());
+            _gameLogicGroup.AddSystem(AddSystem<GravitySystem>());
+            _gameLogicGroup.AddSystem(AddSystem<InteractSystem>());
 
-    public void Tick() =>
-        _world?.Update(Time.deltaTime);
+            _world.Commit();
+        }
 
-    public void FixedTick() =>
-        _world?.FixedUpdate(Time.fixedDeltaTime);
+        private TSystem AddSystem<TSystem>() where TSystem : IInitializer =>
+            _resolver.CreateScope(builder => builder.Register<TSystem>(Lifetime.Singleton)).Resolve<TSystem>();
 
-    public void LateTick() =>
-        _world?.LateUpdate(Time.deltaTime);
+        public void Tick() =>
+            _world?.Update(Time.deltaTime);
 
-    public void PostTick() =>
-        _world?.CleanupUpdate(Time.deltaTime);
+        public void FixedTick() =>
+            _world?.FixedUpdate(Time.fixedDeltaTime);
 
-    public void Dispose()
-    {
-        _gameLogicGroup?.Dispose();
-        _world?.Dispose();
+        public void LateTick() =>
+            _world?.LateUpdate(Time.deltaTime);
+
+        public void PostTick() =>
+            _world?.CleanupUpdate(Time.deltaTime);
+
+        public void Dispose()
+        {
+            _gameLogicGroup?.Dispose();
+            _world?.Dispose();
+        }
     }
 }

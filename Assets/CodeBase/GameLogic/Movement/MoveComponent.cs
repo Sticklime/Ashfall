@@ -1,8 +1,11 @@
 ﻿using Scellecs.Morpeh;
 
-public struct MoveComponent : IComponent
+namespace CodeBase.GameLogic.Movement
 {
-    public float Speed;
-    public float SpeedBase;
-    public float SprintSpeed;
+    public struct MoveComponent : IComponent
+    {
+        public float Speed;
+        public float SpeedBase;
+        public float SprintSpeed;
+    }
 }

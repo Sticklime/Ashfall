@@ -1,7 +1,7 @@
 ﻿using Fusion;
 using Scellecs.Morpeh;
 
-namespace CodeBase.GameLogic.Input
+namespace CodeBase.GameLogic.Common
 {
     public struct NetworkComponent : IComponent
     {

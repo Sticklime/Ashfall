@@ -1,24 +1,25 @@
 using Fusion;
-using UnityEngine;
-using VContainer;
-using Input = CodeBase.GameLogic.Input.Input;
 
-public class NetworkInputReceiver : NetworkBehaviour
+namespace CodeBase.GameLogic.Input
 {
-    public Input PlayerInput { get; private set; }
-
-    private PlayerRef _playerRef;
-
-    public void Construct(PlayerRef playerRef)
+    public class NetworkInputReceiver : NetworkBehaviour
     {
-        _playerRef = playerRef;
-    }
+        public Input PlayerInput { get; private set; }
 
-    public override void FixedUpdateNetwork()
-    {
-        if (Runner.IsServer && Runner.TryGetInputForPlayer<Input>(_playerRef, out var input))
+        private PlayerRef _playerRef;
+
+        public void Construct(PlayerRef playerRef)
         {
-            PlayerInput = input;
+            _playerRef = playerRef;
+        }
+
+        public override void FixedUpdateNetwork()
+        {
+            if (Runner.IsServer && Runner.TryGetInputForPlayer<Input>(_playerRef, out var input))
+            {
+                PlayerInput = input;
+            
+            }
         }
     }
 }

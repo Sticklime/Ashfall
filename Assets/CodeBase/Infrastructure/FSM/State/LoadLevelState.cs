@@ -1,4 +1,4 @@
-using Fusion;
+using CodeBase.Infrastructure.Factory;
 
 namespace CodeBase.Infrastructure.FSM.State
 {
@@ -6,13 +6,11 @@ namespace CodeBase.Infrastructure.FSM.State
     {
         private readonly IStateMachine _stateMachine;
         private readonly IGameFactory _gameFactory;
-        private readonly NetworkRunner _networkRunner;
 
-        public LoadLevelState(IStateMachine stateMachine, IGameFactory gameFactory, NetworkRunner networkRunner)
+        public LoadLevelState(IStateMachine stateMachine, IGameFactory gameFactory)
         {
             _stateMachine = stateMachine;
             _gameFactory = gameFactory;
-            _networkRunner = networkRunner;
         }
 
         public void Enter()

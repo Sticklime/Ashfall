@@ -1,6 +1,9 @@
 ﻿using Scellecs.Morpeh;
 
-public struct JumpComponent : IComponent
+namespace CodeBase.GameLogic.Movement
 {
-    public float JumpForce;
+    public struct JumpComponent : IComponent
+    {
+        public float JumpForce;
+    }
 }

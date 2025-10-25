@@ -1,8 +1,8 @@
-﻿using System;
-using CodeBase.Config.Player;
-using CodeBase.GameLogic.Camera;
+﻿using CodeBase.Config.Player;
 using CodeBase.GameLogic.Common;
+using CodeBase.GameLogic.CustomPhysics;
 using CodeBase.GameLogic.Input;
+using CodeBase.GameLogic.Movement;
 using CodeBase.GameLogic.PickUp;
 using CodeBase.Infrastructure.Services.Asset;
 using CodeBase.Infrastructure.Services.Config;
@@ -14,143 +14,137 @@ using VContainer;
 using VContainer.Unity;
 using Input = CodeBase.GameLogic.Input.Input;
 
-public class GameFactory : IGameFactory
+namespace CodeBase.Infrastructure.Factory
 {
-    private readonly IConfigProvider _configProvider;
-    private readonly IAssetProvider _assetProvider;
-    private readonly World _world;
-    private readonly NetworkRunner _networkRunner;
-    private readonly IObjectResolver _objectResolver;
-
-    public GameFactory(IConfigProvider configProvider, IAssetProvider assetProvider, World world,
-        NetworkRunner networkRunner, IObjectResolver objectResolver)
+    public class GameFactory : IGameFactory
     {
-        _configProvider = configProvider;
-        _assetProvider = assetProvider;
-        _world = world;
-        _networkRunner = networkRunner;
-        _objectResolver = objectResolver;
+        private readonly IConfigProvider _configProvider;
+        private readonly IAssetProvider _assetProvider;
+        private readonly World _world;
+        private readonly NetworkRunner _networkRunner;
+        private readonly IObjectResolver _objectResolver;
+
+        public GameFactory(IConfigProvider configProvider, IAssetProvider assetProvider, World world,
+            NetworkRunner networkRunner, IObjectResolver objectResolver)
+        {
+            _configProvider = configProvider;
+            _assetProvider = assetProvider;
+            _world = world;
+            _networkRunner = networkRunner;
+            _objectResolver = objectResolver;
+        }
+
+        public async UniTask<GameObject> CreatePlayer(PlayerRef playerRef)
+        {
+            PlayerConfig playerConfig = await _configProvider.GetPlayerConfig();
+            GameObject playerPrefab = await _assetProvider.LoadAsync<GameObject>(playerConfig.PlayerReference);
+
+            var networkObject = _networkRunner.Spawn(playerPrefab, Vector3.zero, Quaternion.identity, playerRef);
+            GameObject playerInstance = networkObject.gameObject;
+            _objectResolver.InjectGameObject(playerInstance);
+
+            Entity playerEntity = _world.CreateEntity();
+
+            NetworkInputReceiver networkInputReceiver = playerInstance.GetComponentInChildren<NetworkInputReceiver>();
+
+            networkInputReceiver.Construct(playerRef);
+
+            playerEntity.AddComponent<PlayerTag>();
+            AddCameraRotationComponent(ref playerEntity, playerConfig.CameraSensitivityDefault);
+            AddMoveComponent(ref playerEntity, playerConfig.MoveSpeed, playerConfig.SprintSpeed);
+            AddCharacterControllerComponent(ref playerEntity, playerInstance.GetComponent<CharacterController>());
+            AddTransformComponent(ref playerEntity, playerInstance.transform);
+            AddJumpComponent(ref playerEntity, playerConfig.JumpForce);
+            AddPhysicComponent(ref playerEntity, playerConfig.Weight);
+            AddOwnerComponent(ref playerEntity, playerRef);
+            AddInputComponent(ref playerEntity, new Input(), networkInputReceiver);
+            AddCameraComponent(ref playerRef, playerEntity, playerInstance);
+            AddInteractComponent(ref playerEntity, playerConfig.InteractDistance, playerConfig.InteractMask);
+            AddGroundCheckComponent(ref playerEntity, playerConfig.CheckGroundDistance, playerConfig.GroundCheckLayer);
+
+            _world.Commit();
+            return playerInstance;
+        }
+
+        private void AddInteractComponent(ref Entity playerEntity, float interactDistance, LayerMask interactMask)
+        {
+            ref var interactComponent = ref playerEntity.AddComponent<InteractComponent>();
+
+            interactComponent.InteractDistance = interactDistance;
+            interactComponent.InteractMask = interactMask;
+        }
+
+        private void AddCameraComponent(ref PlayerRef playerRef, Entity playerEntity, GameObject playerInstance)
+        {
+            ref var cameraComponent = ref playerEntity.AddComponent<CameraComponent>();
+
+            cameraComponent.Camera = playerInstance.GetComponentInChildren<Camera>();
+            cameraComponent.Owned = playerRef;
+        }
+
+        private void AddInputComponent(ref Entity playerEntity, Input input, NetworkInputReceiver receiver)
+        {
+            ref var inputComponent = ref playerEntity.AddComponent<InputComponent>();
+            inputComponent.NetworkInputReceiver = receiver;
+            inputComponent.PlayerInput = input;
+        }
+
+        private void AddOwnerComponent(ref Entity playerEntity, PlayerRef owner)
+        {
+            ref var ownerComponent = ref playerEntity.AddComponent<OwnerComponent>();
+            ownerComponent.Owner = owner;
+        }
+
+        private void AddPhysicComponent(ref Entity playerEntity, float weight)
+        {
+            ref var physicsComponent = ref playerEntity.AddComponent<PhysicsComponent>();
+
+            physicsComponent.Weight = weight;
+        }
+
+        private void AddGroundCheckComponent(ref Entity playerEntity, float checkGroundDistance, LayerMask layerMask)
+        {
+            ref var physicsComponent = ref playerEntity.AddComponent<GroundCheckComponent>();
+
+            physicsComponent.CheckGroundDistance = checkGroundDistance;
+            physicsComponent.LayerGround = layerMask;
+        }
+
+        private void AddJumpComponent(ref Entity playerEntity, float jumpForce)
+        {
+            ref var jumpComponent = ref playerEntity.AddComponent<JumpComponent>();
+            jumpComponent.JumpForce = jumpForce;
+        }
+
+        private void AddTransformComponent(ref Entity playerEntity, Transform transform)
+        {
+            ref var transformComponent = ref playerEntity.AddComponent<TransformComponent>();
+            transformComponent.Transform = transform;
+        }
+
+        private void AddCharacterControllerComponent(ref Entity playerEntity, CharacterController characterController)
+        {
+            ref var controllerComponent = ref playerEntity.AddComponent<CharacterControllerComponent>();
+            controllerComponent.Controller = characterController;
+        }
+
+        private void AddMoveComponent(ref Entity playerEntity, float moveSpeed, float sprintSpeed)
+        {
+            ref var moveComponent = ref playerEntity.AddComponent<MoveComponent>();
+            moveComponent.Speed = moveSpeed;
+            moveComponent.SpeedBase = moveSpeed;
+            moveComponent.SprintSpeed = sprintSpeed;
+        }
+
+        private void AddCameraRotationComponent(ref Entity playerEntity, float cameraSensitivity)
+        {
+            ref var cameraRotationComponent = ref playerEntity.AddComponent<CameraRotationComponent>();
+            cameraRotationComponent.Sensitivity = cameraSensitivity;
+        }
     }
 
-    public async UniTask<GameObject> CreatePlayer(PlayerRef playerRef)
+    public interface IGameFactory
     {
-        PlayerConfig playerConfig = await _configProvider.GetPlayerConfig();
-        GameObject playerPrefab = await _assetProvider.LoadAsync<GameObject>(playerConfig.PlayerReference);
-
-        var networkObject = _networkRunner.Spawn(playerPrefab, Vector3.zero, Quaternion.identity, playerRef);
-        GameObject playerInstance = networkObject.gameObject;
-        _objectResolver.InjectGameObject(playerInstance);
-
-        Entity playerEntity = _world.CreateEntity();
-
-        NetworkInputReceiver networkInputReceiver = playerInstance.GetComponentInChildren<NetworkInputReceiver>();
-
-        networkInputReceiver.Construct(playerRef);
-
-        playerEntity.AddComponent<PlayerTag>();
-        AddPositionComponent(ref playerEntity, Vector3.zero);
-        AddCameraRotationComponent(ref playerEntity, playerConfig.CameraSensitivityDefault);
-        AddMoveComponent(ref playerEntity, playerConfig.MoveSpeed, playerConfig.SprintSpeed);
-        AddCharacterControllerComponent(ref playerEntity, playerInstance.GetComponent<CharacterController>());
-        AddTransformComponent(ref playerEntity, playerInstance.transform);
-        AddRigidbodyComponent(ref playerEntity, playerInstance.GetComponent<Rigidbody>());
-        AddJumpComponent(ref playerEntity, playerConfig.JumpForce);
-        AddPhysicComponent(ref playerEntity, playerConfig.Weight, playerConfig.CheckGroundDistance, playerConfig.GroundCheckLayer);
-        AddOwnerComponent(ref playerEntity, playerRef);
-        AddInputComponent(ref playerEntity, new Input(), networkInputReceiver);
-        AddCameraComponent(ref playerRef, playerEntity, playerInstance);
-        AddInteractComponent(ref playerEntity, playerConfig.InteractDistance, playerConfig.InteractMask);
-
-
-        _world.Commit();
-        return playerInstance;
+        UniTask<GameObject> CreatePlayer(PlayerRef playerRef);
     }
-
-    private void AddInteractComponent(ref Entity playerEntity, float interactDistance, LayerMask interactMask)
-    {
-        ref var interactComponent = ref playerEntity.AddComponent<InteractComponent>();
-
-        interactComponent.InteractDistance = interactDistance;
-        interactComponent.InteractMask = interactMask;
-    }
-
-    private void AddCameraComponent(ref PlayerRef playerRef, Entity playerEntity, GameObject playerInstance)
-    {
-        ref var cameraComponent = ref playerEntity.AddComponent<CameraComponent>();
-
-        cameraComponent.Camera = playerInstance.GetComponentInChildren<Camera>();
-        cameraComponent.Owned = playerRef;
-    }
-
-    private void AddInputComponent(ref Entity playerEntity, Input input, NetworkInputReceiver receiver)
-    {
-        ref var inputComponent = ref playerEntity.AddComponent<InputComponent>();
-        inputComponent.NetworkInputReceiver = receiver;
-        inputComponent.PlayerInput = input;
-    }
-
-    private void AddOwnerComponent(ref Entity playerEntity, PlayerRef owner)
-    {
-        ref var ownerComponent = ref playerEntity.AddComponent<OwnerComponent>();
-        ownerComponent.Owner = owner;
-    }
-
-    private void AddPhysicComponent(ref Entity playerEntity, float weight, float checkGroundDistance,
-        LayerMask layerMask)
-    {
-        ref var physicsComponent = ref playerEntity.AddComponent<PhysicsComponent>();
-        
-        physicsComponent.Weight = weight;
-        physicsComponent.CheckGroundDistance = checkGroundDistance;
-        physicsComponent.LayerGround = layerMask;
-    }
-
-    private void AddJumpComponent(ref Entity playerEntity, float jumpForce)
-    {
-        ref var jumpComponent = ref playerEntity.AddComponent<JumpComponent>();
-        jumpComponent.JumpForce = jumpForce;
-    }
-
-    private void AddRigidbodyComponent(ref Entity playerEntity, Rigidbody rigidbody)
-    {
-        ref var rigidbodyComponent = ref playerEntity.AddComponent<RigidbodyComponent>();
-        rigidbodyComponent.Rigidbody = rigidbody;
-    }
-
-    private void AddTransformComponent(ref Entity playerEntity, Transform transform)
-    {
-        ref var transformComponent = ref playerEntity.AddComponent<TransformComponent>();
-        transformComponent.Transform = transform;
-    }
-
-    private void AddCharacterControllerComponent(ref Entity playerEntity, CharacterController characterController)
-    {
-        ref var controllerComponent = ref playerEntity.AddComponent<CharacterControllerComponent>();
-        controllerComponent.Controller = characterController;
-    }
-
-    private void AddPositionComponent(ref Entity playerEntity, Vector3 position)
-    {
-        ref var positionComponent = ref playerEntity.AddComponent<PositionComponent>();
-        positionComponent.Position = position;
-    }
-
-    private void AddMoveComponent(ref Entity playerEntity, float moveSpeed, float sprintSpeed)
-    {
-        ref var moveComponent = ref playerEntity.AddComponent<MoveComponent>();
-        moveComponent.Speed = moveSpeed;
-        moveComponent.SpeedBase = moveSpeed;
-        moveComponent.SprintSpeed = sprintSpeed;
-    }
-
-    private void AddCameraRotationComponent(ref Entity playerEntity, float cameraSensitivity)
-    {
-        ref var cameraRotationComponent = ref playerEntity.AddComponent<CameraRotationComponent>();
-        cameraRotationComponent.Sensitivity = cameraSensitivity;
-    }
-}
-
-public interface IGameFactory
-{
-    UniTask<GameObject> CreatePlayer(PlayerRef playerRef);
 }

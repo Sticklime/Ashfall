@@ -1,4 +1,5 @@
-using Fusion;
+using CodeBase.Infrastructure.ECS;
+using CodeBase.Infrastructure.Services.Input;
 
 namespace CodeBase.Infrastructure.FSM.State
 {

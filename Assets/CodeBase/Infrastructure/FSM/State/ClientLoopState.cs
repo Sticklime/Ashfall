@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using CodeBase.Infrastructure.Factory;
+using CodeBase.Infrastructure.Services.Input;
 using Fusion;
 using Fusion.Sockets;
 using MessagePipe;
@@ -15,14 +17,16 @@ namespace CodeBase.Infrastructure.FSM.State
         private readonly NetworkRunner _networkRunner;
         private readonly IInputService _inputService;
         private readonly IObjectResolver _objectResolver;
+        private readonly IGameFactory _gameFactory;
 
         public ClientLoopState(IStateMachine stateMachine, NetworkRunner networkRunner, IInputService inputService,
-            IObjectResolver objectResolver)
+            IObjectResolver objectResolver, IGameFactory gameFactory)
         {
             _stateMachine = stateMachine;
             _networkRunner = networkRunner;
             _inputService = inputService;
             _objectResolver = objectResolver;
+            _gameFactory = gameFactory;
         }
 
         public void Enter()
@@ -45,7 +49,6 @@ namespace CodeBase.Infrastructure.FSM.State
 
         public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
         {
-            
         }
 
         public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)

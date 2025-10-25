@@ -1,5 +1,4 @@
-﻿using System.ComponentModel;
-using UnityEngine;
+﻿using UnityEngine;
 using IComponent = Scellecs.Morpeh.IComponent;
 
 namespace CodeBase.GameLogic.Common

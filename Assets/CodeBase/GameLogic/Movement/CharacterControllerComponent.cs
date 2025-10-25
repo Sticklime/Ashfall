@@ -1,7 +1,10 @@
 ﻿using Scellecs.Morpeh;
 using UnityEngine;
 
-public struct CharacterControllerComponent : IComponent
+namespace CodeBase.GameLogic.Movement
 {
-    public CharacterController Controller;
+    public struct CharacterControllerComponent : IComponent
+    {
+        public CharacterController Controller;
+    }
 }

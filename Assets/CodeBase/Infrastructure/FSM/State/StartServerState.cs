@@ -1,4 +1,4 @@
-﻿using System;
+﻿using CodeBase.Infrastructure.Factory;
 using Fusion;
 using UnityEngine;
 

@@ -1,44 +1,47 @@
-﻿using CodeBase.Infrastructure.FSM.State;
+﻿using System;
+using CodeBase.Infrastructure.ECS;
 using CodeBase.Infrastructure.FSM;
+using CodeBase.Infrastructure.FSM.State;
 using VContainer.Unity;
-using System;
 
-public class EntryPoint : IStartable, ITickable, IFixedTickable, ILateTickable, IPostTickable,
-    IDisposable
+namespace CodeBase.Infrastructure
 {
-    private readonly SystemEngine _systemEngine;
-    private readonly IStateMachine _stateMachine;
-
-    public EntryPoint(SystemEngine systemEngine, IStateMachine stateMachine)
+    public class EntryPoint : IStartable, ITickable, IFixedTickable, ILateTickable, IPostTickable, IDisposable
     {
-        _systemEngine = systemEngine;
-        _stateMachine = stateMachine;
+        private readonly SystemEngine _systemEngine;
+        private readonly IStateMachine _stateMachine;
+
+        public EntryPoint(SystemEngine systemEngine, IStateMachine stateMachine)
+        {
+            _systemEngine = systemEngine;
+            _stateMachine = stateMachine;
+        }
+
+        public void Start()
+        {
+            _stateMachine.RegisterState<BootState>();
+            _stateMachine.RegisterState<ConnectToServerState>();
+            _stateMachine.RegisterState<StartServerState>();
+            _stateMachine.RegisterState<LoadLevelState>();
+            _stateMachine.RegisterState<ServerLoopState>();
+            _stateMachine.RegisterState<ClientLoopState>();
+
+            _stateMachine.Enter<BootState>();
+        }
+
+        public void Tick() =>
+            _systemEngine.Tick();
+
+        public void FixedTick() =>
+            _systemEngine.FixedTick();
+
+        public void LateTick() =>
+            _systemEngine.LateTick();
+
+        public void PostTick() =>
+            _systemEngine.PostTick();
+
+        public void Dispose() =>
+            _systemEngine.Dispose();
     }
-
-    public void Start()
-    {
-        _stateMachine.RegisterState<BootState>();
-        _stateMachine.RegisterState<ConnectToServerState>();
-        _stateMachine.RegisterState<StartServerState>();
-        _stateMachine.RegisterState<LoadLevelState>();
-        _stateMachine.RegisterState<ServerLoopState>();
-        _stateMachine.RegisterState<ClientLoopState>();
-
-        _stateMachine.Enter<BootState>();
-    }
-
-    public void Tick() =>
-        _systemEngine.Tick();
-
-    public void FixedTick() =>
-        _systemEngine.FixedTick();
-
-    public void LateTick() =>
-        _systemEngine.LateTick();
-
-    public void PostTick() =>
-        _systemEngine.PostTick();
-
-    public void Dispose() =>
-        _systemEngine.Dispose();
 }
