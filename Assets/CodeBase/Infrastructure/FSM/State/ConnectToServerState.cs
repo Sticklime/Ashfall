@@ -1,5 +1,4 @@
-﻿
-using CodeBase.Infrastructure.Factory;
+﻿using CodeBase.Infrastructure.Factory;
 using Cysharp.Threading.Tasks;
 using Fusion;
 using UnityEngine;
@@ -21,11 +20,13 @@ namespace CodeBase.Infrastructure.FSM.State
 
         public async void Enter()
         {
-            await UniTask.Delay(2000);
+            _stateMachine.Enter<ClientLoopState>();
+
             var startGameArgs = new StartGameArgs
             {
                 GameMode = GameMode.Client,
                 SessionName = "DefaultRoom",
+                Scene = SceneRef.FromIndex(0),
                 SceneManager = _networkRunner.gameObject.AddComponent<NetworkSceneManagerDefault>()
             };
             
@@ -33,8 +34,6 @@ namespace CodeBase.Infrastructure.FSM.State
 
             if (result.Ok)
             {
-                await UniTask.Delay(1000);
-                _stateMachine.Enter<ClientLoopState>();
             }
             else
             {

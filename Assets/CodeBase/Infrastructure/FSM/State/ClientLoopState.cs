@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using CodeBase.Infrastructure.Factory;
 using CodeBase.Infrastructure.Services.Input;
+using Cysharp.Threading.Tasks;
 using Fusion;
 using Fusion.Sockets;
 using MessagePipe;
@@ -11,7 +13,7 @@ using VContainer.Unity;
 
 namespace CodeBase.Infrastructure.FSM.State
 {
-    public class ClientLoopState : IState, INetworkRunnerCallbacks
+    public class ClientLoopState : IState, INetworkRunnerCallbacks, IPlayerJoined
     {
         private readonly IStateMachine _stateMachine;
         private readonly NetworkRunner _networkRunner;
@@ -49,7 +51,25 @@ namespace CodeBase.Infrastructure.FSM.State
 
         public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
         {
+            // WaitForPlayerObjectAsync(player).Forget();
         }
+
+        private async UniTaskVoid WaitForPlayerObjectAsync(PlayerRef player)
+        {
+            NetworkObject playerObj = null;
+
+            await UniTask.WaitUntil(() =>
+            {
+                bool found = _networkRunner.TryGetPlayerObject(player, out playerObj);
+                if (!found)
+                    Debug.Log($"Still waiting for player object of {player}");
+                return found;
+            });
+
+            Debug.Log($"✅ Player object found: {playerObj.name}");
+            await _gameFactory.CreateEntityPlayer(player, playerObj.gameObject);
+        }
+
 
         public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
         {
@@ -124,6 +144,11 @@ namespace CodeBase.Infrastructure.FSM.State
 
         public void OnSceneLoadStart(NetworkRunner runner)
         {
+        }
+
+        public void PlayerJoined(PlayerRef player)
+        {
+            WaitForPlayerObjectAsync(player).Forget();
         }
     }
 }

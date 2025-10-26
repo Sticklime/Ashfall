@@ -17,6 +17,8 @@ namespace CodeBase.Infrastructure.FSM.State
         private readonly IInputService _inputService;
         private readonly NetworkRunner _networkRunner;
 
+        private bool _isServerSpawned;
+
         public ServerLoopState(IStateMachine stateMachine, IGameFactory gameFactory, IInputService inputService,
             NetworkRunner networkRunner)
         {
@@ -46,7 +48,14 @@ namespace CodeBase.Infrastructure.FSM.State
 
         public async void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
         {
-            await _gameFactory.CreatePlayer(player);
+            GameObject playerInstance = await _gameFactory.CreatePlayer(player);
+            
+            if (_isServerSpawned)
+                return;
+
+            _isServerSpawned = true;
+
+            await _gameFactory.CreateEntityPlayer(player, playerInstance);
         }
 
         public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)

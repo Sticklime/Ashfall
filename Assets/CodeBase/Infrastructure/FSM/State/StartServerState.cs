@@ -1,4 +1,5 @@
-﻿using CodeBase.Infrastructure.Factory;
+﻿using CodeBase.GameLogic;
+using CodeBase.Infrastructure.Factory;
 using Fusion;
 using UnityEngine;
 
@@ -20,21 +21,25 @@ namespace CodeBase.Infrastructure.FSM.State
         public async void Enter()
         {
             var networkSceneManagerDefault = _networkRunner.gameObject.AddComponent<NetworkSceneManagerDefault>();
-            
+
             var startGameArgs = new StartGameArgs
             {
                 GameMode = GameMode.Host,
                 SessionName = "DefaultRoom",
                 PlayerCount = 5,
+                Scene = SceneRef.FromIndex(0),
                 SceneManager = networkSceneManagerDefault
             };
 
             var result = await _networkRunner.StartGame(startGameArgs);
 
+            foreach (var obj in Object.FindObjectsOfType<NetworkObject>()) 
+                _networkRunner.Spawn(obj);
+
             if (result.Ok)
             {
                 Debug.Log("Server started");
-                _stateMachine.Enter<LoadLevelState>();
+                _stateMachine.Enter<ServerLoopState>();
             }
             else
                 Debug.LogError($"Server start failed: {result.ErrorMessage}");

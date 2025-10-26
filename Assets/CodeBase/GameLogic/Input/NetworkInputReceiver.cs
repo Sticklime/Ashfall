@@ -18,7 +18,6 @@ namespace CodeBase.GameLogic.Input
             if (Runner.IsServer && Runner.TryGetInputForPlayer<Input>(_playerRef, out var input))
             {
                 PlayerInput = input;
-            
             }
         }
     }

@@ -43,6 +43,12 @@ namespace CodeBase.Infrastructure.Factory
             GameObject playerInstance = networkObject.gameObject;
             _objectResolver.InjectGameObject(playerInstance);
 
+            return playerInstance;
+        }
+
+        public async UniTask<Entity> CreateEntityPlayer(PlayerRef playerRef, GameObject playerInstance)
+        {
+            PlayerConfig playerConfig = await _configProvider.GetPlayerConfig();
             Entity playerEntity = _world.CreateEntity();
 
             NetworkInputReceiver networkInputReceiver = playerInstance.GetComponentInChildren<NetworkInputReceiver>();
@@ -63,7 +69,10 @@ namespace CodeBase.Infrastructure.Factory
             AddGroundCheckComponent(ref playerEntity, playerConfig.CheckGroundDistance, playerConfig.GroundCheckLayer);
 
             _world.Commit();
-            return playerInstance;
+            
+            Debug.Log($"Created player {playerInstance}");
+
+            return playerEntity;
         }
 
         private void AddInteractComponent(ref Entity playerEntity, float interactDistance, LayerMask interactMask)
@@ -146,5 +155,6 @@ namespace CodeBase.Infrastructure.Factory
     public interface IGameFactory
     {
         UniTask<GameObject> CreatePlayer(PlayerRef playerRef);
+        UniTask<Entity> CreateEntityPlayer(PlayerRef playerRef, GameObject playerInstance);
     }
 }

@@ -22,7 +22,6 @@ namespace CodeBase.Infrastructure
             _stateMachine.RegisterState<BootState>();
             _stateMachine.RegisterState<ConnectToServerState>();
             _stateMachine.RegisterState<StartServerState>();
-            _stateMachine.RegisterState<LoadLevelState>();
             _stateMachine.RegisterState<ServerLoopState>();
             _stateMachine.RegisterState<ClientLoopState>();
 
