@@ -5,9 +5,9 @@ namespace CodeBase.GameLogic.Input
 {
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(GhostInputSystemGroup))]
-    public partial struct NetworkInputApplySystem : ISystem
+    public partial class NetworkInputApplySystem : SystemBase
     {
-        public void OnUpdate(ref SystemState state)
+        protected override void OnUpdate()
         {
             foreach (var (input, networkInput) in
                      SystemAPI.Query<RefRW<InputComponent>, RefRO<NetworkInputReceiverComponent>>())

@@ -1,48 +1,56 @@
-﻿using CodeBase.Infrastructure.Factory;
-using Cysharp.Threading.Tasks;
-using Fusion;
+using System;
+using CodeBase.Infrastructure.ECS;
+using Unity.Entities;
+using Unity.NetCode;
+using Unity.Networking.Transport;
 using UnityEngine;
 
 namespace CodeBase.Infrastructure.FSM.State
 {
     public class ConnectToServerState : IState
     {
-        private readonly IStateMachine _stateMachine;
-        private readonly IGameFactory _gameFactory;
-        private readonly NetworkRunner _networkRunner;
+        private const ushort DefaultPort = 7777;
 
-        public ConnectToServerState(IStateMachine stateMachine, IGameFactory gameFactory, NetworkRunner networkRunner)
+        private readonly IStateMachine _stateMachine;
+        private readonly SystemEngine _systemEngine;
+        private World _clientWorld;
+
+        public ConnectToServerState(IStateMachine stateMachine, SystemEngine systemEngine)
         {
             _stateMachine = stateMachine;
-            _gameFactory = gameFactory;
-            _networkRunner = networkRunner;
+            _systemEngine = systemEngine;
         }
 
-        public async void Enter()
+        public void Enter()
         {
+            ClientServerBootstrap.RequestedPlayType = ClientServerBootstrap.PlayType.Client;
+            _clientWorld = ClientServerBootstrap.CreateClientWorld("ClientWorld");
+
+            if (_clientWorld == null || !_clientWorld.IsCreated)
+                throw new InvalidOperationException("Failed to create DOTS client world.");
+
+            _systemEngine.RegisterWorld(_clientWorld);
+            _systemEngine.SetActiveWorld(_clientWorld);
+
+            var entityManager = _clientWorld.EntityManager;
+
+            var connectEndpoint = NetworkEndpoint.LoopbackIpv4;
+            connectEndpoint.Port = DefaultPort;
+
+            var connectEntity = entityManager.CreateEntity(typeof(NetworkStreamRequestConnect));
+            entityManager.SetComponentData(connectEntity, new NetworkStreamRequestConnect
+            {
+                Endpoint = connectEndpoint
+            });
+
+            Debug.Log($"[DOTS NET] Client connecting to {connectEndpoint.Address}:{connectEndpoint.Port}");
+
             _stateMachine.Enter<ClientLoopState>();
-
-            var startGameArgs = new StartGameArgs
-            {
-                GameMode = GameMode.Client,
-                SessionName = "DefaultRoom",
-                Scene = SceneRef.FromIndex(0),
-                SceneManager = _networkRunner.gameObject.AddComponent<NetworkSceneManagerDefault>()
-            };
-            
-            var result = await _networkRunner.StartGame(startGameArgs);
-
-            if (result.Ok)
-            {
-            }
-            else
-            {
-                Debug.LogError($"Connection failed: {result.ShutdownReason}");
-            }
         }
 
         public void Exit()
         {
+            // Client lifecycle is managed by ClientLoopState
         }
     }
 }

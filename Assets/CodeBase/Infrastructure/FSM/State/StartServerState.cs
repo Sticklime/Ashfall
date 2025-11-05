@@ -1,3 +1,4 @@
+using System;
 using CodeBase.Infrastructure.ECS;
 using Unity.Entities;
 using Unity.NetCode;
@@ -13,7 +14,6 @@ namespace CodeBase.Infrastructure.FSM.State
         private readonly IStateMachine _stateMachine;
         private readonly SystemEngine _systemEngine;
         private World _serverWorld;
-        private Entity _serverEntity;
 
         public StartServerState(IStateMachine stateMachine, SystemEngine systemEngine)
         {
@@ -23,43 +23,37 @@ namespace CodeBase.Infrastructure.FSM.State
 
         public void Enter()
         {
-            _systemEngine.Initialize();
+            if (_serverWorld != null && _serverWorld.IsCreated)
+                return;
 
+            ClientServerBootstrap.RequestedPlayType = ClientServerBootstrap.PlayType.Server;
             _serverWorld = ClientServerBootstrap.CreateServerWorld("ServerWorld");
-            World.DefaultGameObjectInjectionWorld = _serverWorld;
+
+            if (_serverWorld == null || !_serverWorld.IsCreated)
+                throw new InvalidOperationException("Failed to create DOTS server world.");
+
+            _systemEngine.RegisterWorld(_serverWorld);
+            _systemEngine.SetActiveWorld(_serverWorld);
 
             var entityManager = _serverWorld.EntityManager;
 
             var listenEndpoint = NetworkEndpoint.AnyIpv4;
             listenEndpoint.Port = DefaultPort;
 
-            _serverEntity = entityManager.CreateEntity(typeof(NetworkStreamRequestListen));
-            entityManager.SetComponentData(_serverEntity, new NetworkStreamRequestListen
+            var listenEntity = entityManager.CreateEntity(typeof(NetworkStreamRequestListen));
+            entityManager.SetComponentData(listenEntity, new NetworkStreamRequestListen
             {
                 Endpoint = listenEndpoint
             });
 
-            Debug.Log($"[DOTS NET] Server started on port {listenEndpoint.Port}");
+            Debug.Log($"[DOTS NET] Server listening on port {listenEndpoint.Port}");
 
             _stateMachine.Enter<ServerLoopState>();
         }
 
         public void Exit()
         {
-            if (_serverWorld != null && _serverWorld.IsCreated)
-            {
-                if (_serverEntity != Entity.Null && _serverWorld.EntityManager.Exists(_serverEntity))
-                {
-                    _serverWorld.EntityManager.DestroyEntity(_serverEntity);
-                    _serverEntity = Entity.Null;
-                }
-
-                _serverWorld.Dispose();
-                _serverWorld = null;
-            }
-
-            _systemEngine.Dispose();
-            Debug.Log("[DOTS NET] Server stopped");
+            // Server lifecycle is managed by ServerLoopState
         }
     }
 }
