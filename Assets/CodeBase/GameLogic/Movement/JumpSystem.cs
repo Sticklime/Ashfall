@@ -1,58 +1,38 @@
-﻿using CodeBase.GameLogic.Common;
+using CodeBase.GameLogic.Common;
 using CodeBase.GameLogic.CustomPhysics;
 using CodeBase.GameLogic.Input;
-using CodeBase.Infrastructure.Services.Input;
-using Scellecs.Morpeh;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 
 namespace CodeBase.GameLogic.Movement
 {
-    public class JumpSystem : ISystem
+    public partial class JumpSystem : SystemBase
     {
-        private readonly IInputService _inputService;
-        private Filter _filter;
-        public World World { get; set; }
-
-        public JumpSystem(IInputService inputService)
+        protected override void OnUpdate()
         {
-            _inputService = inputService;
-        }
+            float deltaTime = SystemAPI.Time.DeltaTime;
 
-        public void OnAwake()
-        {
-            _filter = World.Filter
-                .With<CharacterControllerComponent>()
-                .With<JumpComponent>()
-                .With<PhysicsComponent>()
-                .With<GroundCheckComponent>()
-                .With<InputComponent>()
-                .With<PlayerTag>()
-                .Build();
-        }
-
-        public void OnUpdate(float deltaTime)
-        {
-            foreach (var entity in _filter)
+            foreach (var (controller, jump, physics, groundCheck, input, transform) in
+                     SystemAPI.Query<ManagedAPI<CharacterControllerComponent>, RefRO<JumpComponent>, RefRW<PhysicsComponent>, RefRO<GroundCheckComponent>, RefRO<InputComponent>, RefRW<LocalTransform>>()
+                         .WithAll<PlayerTag>())
             {
-                ref var controllerComponent = ref entity.GetComponent<CharacterControllerComponent>();
-                ref var jumpComponent = ref entity.GetComponent<JumpComponent>();
-                ref var physicsComponent = ref entity.GetComponent<PhysicsComponent>();
-                ref var groundCheckComponent = ref entity.GetComponent<GroundCheckComponent>();
-                ref var input = ref entity.GetComponent<InputComponent>();
+                if (input.ValueRO.PlayerInput.JumpTriggered && groundCheck.ValueRO.IsGrounded)
+                {
+                    float jumpVelocity = math.sqrt(math.max(0f, jump.ValueRO.JumpForce * 2f * physics.ValueRO.Weight));
+                    physics.ValueRW.Velocity.y = jumpVelocity;
+                }
 
-                var characterController = controllerComponent.Controller;
+                float3 velocity = physics.ValueRO.Velocity;
 
-                if (input.PlayerInput.JumpTriggered && groundCheckComponent.IsGrounded)
-                    physicsComponent.Velocity.y = Mathf.Sqrt(jumpComponent.JumpForce * 2f * physicsComponent.Weight);
+                CharacterController characterController = controller.Value.Controller;
+                Vector3 moveVector = new Vector3(0f, velocity.y, 0f) * deltaTime;
+                characterController.Move(moveVector);
 
-
-                Vector3 moveVector = new Vector3(0, physicsComponent.Velocity.y, 0);
-                characterController.Move(moveVector * deltaTime);
+                Vector3 controllerPosition = characterController.transform.position;
+                transform.ValueRW.Position = new float3(controllerPosition.x, controllerPosition.y, controllerPosition.z);
             }
-        }
-
-        public void Dispose()
-        {
         }
     }
 }

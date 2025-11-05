@@ -1,8 +1,8 @@
-﻿using IComponent = Scellecs.Morpeh.IComponent;
+using Unity.Entities;
 
 namespace CodeBase.GameLogic.Common
 {
-    public struct PlayerTag : IComponent
+    public struct PlayerTag : IComponentData
     {
         
     }

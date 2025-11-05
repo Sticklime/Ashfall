@@ -1,12 +1,11 @@
-﻿using Scellecs.Morpeh;
 using Unity.Entities;
-using UnityEngine;
+using Unity.Mathematics;
 
 namespace CodeBase.GameLogic.CustomPhysics
 {
     public struct PhysicsComponent : IComponentData
     {
         public float Weight;
-        public Vector3 Velocity;
+        public float3 Velocity;
     }
 }

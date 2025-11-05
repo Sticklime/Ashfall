@@ -1,8 +1,8 @@
-﻿using Scellecs.Morpeh;
+using Unity.Entities;
 
 namespace CodeBase.GameLogic.Movement
 {
-    public struct JumpComponent : IComponent
+    public struct JumpComponent : IComponentData
     {
         public float JumpForce;
     }

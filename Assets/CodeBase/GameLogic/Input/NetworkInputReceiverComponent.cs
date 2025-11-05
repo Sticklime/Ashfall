@@ -2,7 +2,7 @@ using Unity.Entities;
 
 namespace CodeBase.GameLogic.Input
 {
-    public struct InputComponent : IComponentData
+    public struct NetworkInputReceiverComponent : IComponentData
     {
         public Input PlayerInput;
     }

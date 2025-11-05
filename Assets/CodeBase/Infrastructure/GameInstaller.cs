@@ -8,7 +8,7 @@ using CodeBase.Infrastructure.Services.Config;
 using CodeBase.Infrastructure.Services.Input;
 using Fusion;
 using MessagePipe;
-using Scellecs.Morpeh;
+using Unity.Entities;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
@@ -71,7 +71,13 @@ namespace CodeBase.Infrastructure
                 .As<IPostTickable>()
                 .As<IDisposable>();
 
-        private void RegisterEcsWorld(IContainerBuilder builder) =>
-            builder.RegisterInstance(World.Create());
+        private void RegisterEcsWorld(IContainerBuilder builder)
+        {
+            var world = new World("GameWorld");
+
+            builder.RegisterInstance(world)
+                .As<World>()
+                .AsSelf();
+        }
     }
 }

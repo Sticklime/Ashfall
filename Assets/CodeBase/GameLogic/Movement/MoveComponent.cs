@@ -1,8 +1,8 @@
-﻿using Scellecs.Morpeh;
+using Unity.Entities;
 
 namespace CodeBase.GameLogic.Movement
 {
-    public struct MoveComponent : IComponent
+    public struct MoveComponent : IComponentData
     {
         public float Speed;
         public float SpeedBase;
