@@ -1,40 +1,21 @@
-﻿using Fusion;
-using Scellecs.Morpeh;
+﻿using Unity.Burst;
+using Unity.Entities;
+using Unity.NetCode;
 
 namespace CodeBase.GameLogic.Input
 {
-    public class NetworkInputApplySystem : ISystem
+    [BurstCompile]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateBefore(typeof(GhostInputSystemGroup))]
+    public partial struct NetworkInputApplySystem : ISystem
     {
-        public World World { get; set; }
-
-        private NetworkRunner _runner;
-        private Filter _filter;
-
-        public NetworkInputApplySystem(NetworkRunner runner)
+        public void OnUpdate(ref SystemState state)
         {
-            _runner = runner;
-        }
-
-        public void OnAwake()
-        {
-            _filter = World.Filter
-                .With<InputComponent>()
-                .Build();
-
-        }
-
-        public void OnUpdate(float deltaTime)
-        {
-            foreach (var entity in _filter)
+            foreach (var (input, networkInput) in
+                     SystemAPI.Query<RefRW<InputComponent>, RefRO<NetworkInputReceiverComponent>>())
             {
-                ref var inputComponent = ref entity.GetComponent<InputComponent>();
-                
-                inputComponent.PlayerInput = inputComponent.NetworkInputReceiver.PlayerInput;
+                input.ValueRW.PlayerInput = networkInput.ValueRO.PlayerInput;
             }
-        }
-
-        public void Dispose()
-        {
         }
     }
 }

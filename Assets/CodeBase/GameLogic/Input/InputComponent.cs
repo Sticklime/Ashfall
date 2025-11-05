@@ -1,6 +1,4 @@
-﻿using Fusion;
-using Scellecs.Morpeh;
-using UnityEngine;
+﻿using System.ComponentModel;
 
 namespace CodeBase.GameLogic.Input
 {
@@ -8,13 +6,5 @@ namespace CodeBase.GameLogic.Input
     {
         public NetworkInputReceiver NetworkInputReceiver;
         public Input PlayerInput;
-    }
-
-    public struct Input : INetworkInput
-    {
-        public Vector2 Move;
-        public Vector3 Look;
-        public bool JumpTriggered;
-        public bool SprintProgress;
     }
 }

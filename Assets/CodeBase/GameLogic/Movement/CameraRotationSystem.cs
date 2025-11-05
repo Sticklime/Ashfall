@@ -1,52 +1,34 @@
-﻿using CodeBase.GameLogic.Common;
-using CodeBase.GameLogic.Input;
-using Scellecs.Morpeh;
-using UnityEngine;
+﻿using Unity.Burst;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace CodeBase.GameLogic.Movement
 {
-    public class CameraRotationSystem : ISystem
+    [BurstCompile]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    public partial struct CameraRotationSystem : ISystem
     {
-        private Filter _filter;
-        public World World { get; set; }
-
-        public void OnAwake()
+        public void OnUpdate(ref SystemState state)
         {
-            _filter = World.Filter
-                .With<CameraRotationComponent>()
-                .With<TransformComponent>()
-                .With<InputComponent>()
-                .With<CameraComponent>()
-                .With<PlayerTag>()
-                .Build();
-        }
+            float deltaTime = SystemAPI.Time.DeltaTime;
 
-        public void OnUpdate(float deltaTime)
-        {
-            foreach (var entity in _filter)
+            foreach (var (rotation, input, cameraTransform, mountTransform) in
+                     SystemAPI.Query<RefRW<CameraRotationComponent>, RefRO<InputComponent>, RefRW<CameraTransform>, RefRW<MountTransform>>())
             {
-                ref var rotation = ref entity.GetComponent<CameraRotationComponent>();
-                ref var camera = ref entity.GetComponent<CameraComponent>();
-                ref var mount = ref entity.GetComponent<TransformComponent>();
-                ref var input = ref entity.GetComponent<InputComponent>();
+                float2 lookInput = input.ValueRO.Look;
+                float horizontalRotation = lookInput.x * rotation.ValueRO.Sensitivity * deltaTime;
+                float verticalRotation = -lookInput.y * rotation.ValueRO.Sensitivity * deltaTime;
 
-                Vector2 lookInput = input.PlayerInput.Look;
+                rotation.ValueRW.VerticalAngle = math.clamp(rotation.ValueRO.VerticalAngle + verticalRotation, -90f, 90f);
+                rotation.ValueRW.HorizontalAngle += horizontalRotation;
 
-                float horizontalRotation = lookInput.x * rotation.Sensitivity * deltaTime;
-                float verticalRotation = -lookInput.y * rotation.Sensitivity * deltaTime;
+                float3 cameraEuler = new float3(rotation.ValueRO.VerticalAngle, 0f, 0f);
+                float3 mountEuler = new float3(0f, rotation.ValueRO.HorizontalAngle, 0f);
 
-                rotation.VerticalAngle += verticalRotation;
-                rotation.HorizontalAngle += horizontalRotation;
-                rotation.VerticalAngle = Mathf.Clamp(rotation.VerticalAngle, -90f, 90f);
-
-                camera.Camera.transform.localEulerAngles = new Vector3(rotation.VerticalAngle, 0f, 0f);
-                mount.Transform.localEulerAngles = new Vector3(0f, rotation.HorizontalAngle, 0f);
+                cameraTransform.ValueRW.Rotation = quaternion.EulerXYZ(math.radians(cameraEuler));
+                mountTransform.ValueRW.Rotation = quaternion.EulerXYZ(math.radians(mountEuler));
             }
-        }
-
-
-        public void Dispose()
-        {
         }
     }
 }

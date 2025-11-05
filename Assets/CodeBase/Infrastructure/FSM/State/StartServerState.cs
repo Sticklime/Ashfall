@@ -1,6 +1,7 @@
-﻿using CodeBase.GameLogic;
-using CodeBase.Infrastructure.Factory;
-using Fusion;
+﻿using CodeBase.Infrastructure.ECS;
+using Unity.Entities;
+using Unity.NetCode;
+using Unity.Networking.Transport;
 using UnityEngine;
 
 namespace CodeBase.Infrastructure.FSM.State
@@ -8,45 +9,54 @@ namespace CodeBase.Infrastructure.FSM.State
     public class StartServerState : IState
     {
         private readonly IStateMachine _stateMachine;
-        private readonly NetworkRunner _networkRunner;
-        private readonly IGameFactory _gameFactory;
+        private readonly SystemEngine _systemEngine;
+        private World _serverWorld;
+        private Entity _serverEntity;
 
-        public StartServerState(IStateMachine stateMachine, NetworkRunner networkRunner, IGameFactory gameFactory)
+        public StartServerState(IStateMachine stateMachine, SystemEngine systemEngine)
         {
             _stateMachine = stateMachine;
-            _networkRunner = networkRunner;
-            _gameFactory = gameFactory;
+            _systemEngine = systemEngine;
         }
 
-        public async void Enter()
+        public void Enter()
         {
-            var networkSceneManagerDefault = _networkRunner.gameObject.AddComponent<NetworkSceneManagerDefault>();
+            _systemEngine.Initialize();
 
-            var startGameArgs = new StartGameArgs
-            {
-                GameMode = GameMode.Host,
-                SessionName = "DefaultRoom",
-                PlayerCount = 5,
-                Scene = SceneRef.FromIndex(0),
-                SceneManager = networkSceneManagerDefault
-            };
+            _serverWorld = new World("ServerWorld");
+            World.DefaultGameObjectInjectionWorld = _serverWorld;
 
-            var result = await _networkRunner.StartGame(startGameArgs);
+            ClientServerBootstrap.CreateServerWorld("ServerWorld");
+            var networkDriver = new UnityTransport();
+            networkDriver.SetConnectionData("0.0.0.0", 7777, "0.0.0.0");
 
-            foreach (var obj in Object.FindObjectsOfType<NetworkObject>()) 
-                _networkRunner.Spawn(obj);
+            var networkEntity = _serverWorld.EntityManager.CreateEntity(typeof(NetworkStreamDriver));
+            _serverWorld.EntityManager.SetComponentData(networkEntity, new NetworkStreamDriver { Value = networkDriver.Driver });
 
-            if (result.Ok)
-            {
-                Debug.Log("Server started");
-                _stateMachine.Enter<ServerLoopState>();
-            }
-            else
-                Debug.LogError($"Server start failed: {result.ErrorMessage}");
+            _serverEntity = networkEntity;
+
+            var simulation = _serverWorld.GetOrCreateSystemManaged<SimulationSystemGroup>();
+            var networkReceive = _serverWorld.GetOrCreateSystemManaged<NetworkStreamReceiveSystemGroup>();
+            var ghostSend = _serverWorld.GetOrCreateSystemManaged<GhostSendSystemGroup>();
+
+            simulation.AddSystemToUpdateList(networkReceive);
+            simulation.AddSystemToUpdateList(ghostSend);
+
+            Debug.Log("[DOTS NET] Server started on port 7777");
+
+            _stateMachine.Enter<ServerLoopState>();
         }
 
         public void Exit()
         {
+            if (_serverWorld != null && _serverWorld.IsCreated)
+            {
+                _serverWorld.Dispose();
+                _serverWorld = null;
+            }
+
+            _systemEngine.Dispose();
+            Debug.Log("[DOTS NET] Server stopped");
         }
     }
 }

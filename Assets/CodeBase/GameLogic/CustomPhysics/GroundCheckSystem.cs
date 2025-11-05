@@ -1,58 +1,64 @@
-﻿using CodeBase.GameLogic.Common;
-using Scellecs.Morpeh;
+﻿using Unity.Burst;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+using Unity.Physics;
+using Unity.Physics.Systems;
 using UnityEngine;
 
 namespace CodeBase.GameLogic.CustomPhysics
 {
-    public class GroundCheckSystem : ISystem
+    [BurstCompile]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(BuildPhysicsWorld))]
+    public partial struct GroundCheckSystem : ISystem
     {
-        private Filter _filter;
-        public World World { get; set; }
+        private ComponentLookup<LocalToWorld> _transformLookup;
+        private BuildPhysicsWorld _buildPhysicsWorld;
+        private CollisionWorld _collisionWorld;
 
-        public void OnAwake()
+        public void OnCreate(ref SystemState state)
         {
-            _filter = World.Filter
-                .With<GroundCheckComponent>()
-                .With<TransformComponent>()
-                .Build();
+            _transformLookup = state.GetComponentLookup<LocalToWorld>(true);
+            _buildPhysicsWorld = state.World.GetExistingSystemManaged<BuildPhysicsWorld>();
         }
 
-        public void OnUpdate(float deltaTime)
+        public void OnUpdate(ref SystemState state)
         {
-            foreach (var entity in _filter)
+            _transformLookup.Update(ref state);
+            _collisionWorld = _buildPhysicsWorld.PhysicsWorld.CollisionWorld;
+            float deltaTime = SystemAPI.Time.DeltaTime;
+
+            foreach (var (groundCheck, transform) in
+                     SystemAPI.Query<RefRW<GroundCheckComponent>, RefRO<LocalTransform>>())
             {
-                ref var groundCheck = ref entity.GetComponent<GroundCheckComponent>();
-                ref var transform = ref entity.GetComponent<TransformComponent>();
+                float3 origin = transform.ValueRO.Position + new float3(0, 0.1f, 0);
+                float3 direction = math.down();
+                float maxDistance = groundCheck.ValueRO.CheckGroundDistance + 0.1f;
 
-                var transformRef = transform.Transform;
-                bool isGrounded = TryGetGroundPoint(transformRef, groundCheck.CheckGroundDistance, groundCheck.LayerGround, out var groundPoint);
+                var rayInput = new RaycastInput
+                {
+                    Start = origin,
+                    End = origin + direction * maxDistance,
+                    Filter = CollisionFilter.Default
+                };
 
-                groundCheck.IsGrounded = isGrounded;
-                groundCheck.GroundPoint = groundPoint;
+                if (_collisionWorld.CastRay(rayInput, out Unity.Physics.RaycastHit hit))
+                {
+                    groundCheck.ValueRW.IsGrounded = true;
+                    groundCheck.ValueRW.GroundPoint = hit.Position;
+                }
+                else
+                {
+                    groundCheck.ValueRW.IsGrounded = false;
+                    groundCheck.ValueRW.GroundPoint = float3.zero;
+                }
 
-                Debug.DrawRay(transformRef.position, Vector3.down * groundCheck.CheckGroundDistance,
-                    isGrounded ? Color.green : Color.red);
+#if UNITY_EDITOR
+                Color color = groundCheck.ValueRO.IsGrounded ? Color.green : Color.red;
+                Debug.DrawRay(origin, direction * groundCheck.ValueRO.CheckGroundDistance, color);
+#endif
             }
-        }
-
-        private bool TryGetGroundPoint(Transform transform, float checkGroundDistance, LayerMask layerGround, out Vector3 groundPoint)
-        {
-            float skinOffset = 0.1f;
-            Vector3 origin = transform.position + Vector3.up * skinOffset;
-
-            if (UnityEngine.Physics.Raycast(origin, Vector3.down, out RaycastHit hit, checkGroundDistance + skinOffset, layerGround))
-            {
-                groundPoint = hit.point;
-                return true;
-            }
-
-            groundPoint = Vector3.zero;
-            return false;
-        }
-
-        public void Dispose()
-        {
-            _filter = null;
         }
     }
 }

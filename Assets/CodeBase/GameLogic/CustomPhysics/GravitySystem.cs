@@ -1,56 +1,36 @@
-﻿using CodeBase.GameLogic.Common;
-using Scellecs.Morpeh;
-using UnityEngine;
+﻿using Unity.Burst;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace CodeBase.GameLogic.CustomPhysics
 {
-    public class GravitySystem : ISystem
+    [BurstCompile]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    public partial struct GravitySystem : ISystem
     {
-        private Filter _filter;
-        public World World { get; set; }
-
-        public void OnAwake()
+        public void OnUpdate(ref SystemState state)
         {
-            _filter = World.Filter
-                .With<PhysicsComponent>()
-                .With<GroundCheckComponent>()
-                .With<TransformComponent>()
-                .Build();
-        }
+            float deltaTime = SystemAPI.Time.DeltaTime;
 
-        public void OnUpdate(float deltaTime)
-        {
-            foreach (var entity in _filter)
+            foreach (var (physics, groundCheck, transform) in
+                     SystemAPI.Query<RefRW<PhysicsComponent>, RefRO<GroundCheckComponent>, RefRW<LocalTransform>>())
             {
-                ref var physics = ref entity.GetComponent<PhysicsComponent>();
-                ref var groundCheck = ref entity.GetComponent<GroundCheckComponent>();
-                ref var transform = ref entity.GetComponent<TransformComponent>();
-
-                var transformRef = transform.Transform;
-
-                if (!groundCheck.IsGrounded)
+                if (!groundCheck.ValueRO.IsGrounded)
                 {
-                    physics.Velocity += Vector3.down * physics.Weight * deltaTime;
-                    transformRef.position += physics.Velocity * deltaTime;
+                    physics.ValueRW.Velocity += math.down() * physics.ValueRO.Weight * deltaTime;
+                    transform.ValueRW.Position += physics.ValueRW.Velocity * deltaTime;
                 }
                 else
                 {
-                    physics.Velocity = Vector3.zero;
-
-                    Vector3 targetPosition = new Vector3(
-                        transformRef.position.x,
-                        groundCheck.GroundPoint.y + groundCheck.CheckGroundDistance,
-                        transformRef.position.z
+                    physics.ValueRW.Velocity = float3.zero;
+                    transform.ValueRW.Position = new float3(
+                        transform.ValueRO.Position.x,
+                        groundCheck.ValueRO.GroundPoint.y + groundCheck.ValueRO.CheckGroundDistance,
+                        transform.ValueRO.Position.z
                     );
-
-                    transformRef.position = targetPosition;
                 }
             }
-        }
-
-        public void Dispose()
-        {
-            _filter = null;
         }
     }
 }

@@ -1,9 +1,8 @@
-﻿using Fusion;
-using Scellecs.Morpeh;
+﻿using Unity.Entities;
 
 namespace CodeBase.GameLogic.Common
 {
-    public struct OwnerComponent : IComponent
+    public struct OwnerComponent : IComponentData
     {
         public PlayerRef Owner;
     }

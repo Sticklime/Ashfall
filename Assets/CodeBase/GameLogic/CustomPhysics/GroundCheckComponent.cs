@@ -1,9 +1,9 @@
-﻿using Scellecs.Morpeh;
+﻿using Unity.Entities;
 using UnityEngine;
 
 namespace CodeBase.GameLogic.CustomPhysics
 {
-    public struct GroundCheckComponent : IComponent
+    public struct GroundCheckComponent : IComponentData
     {
         public float CheckGroundDistance;
         public bool IsGrounded;
