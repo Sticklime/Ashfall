@@ -1,136 +1,41 @@
-﻿using System;
-using System.Collections.Generic;
-using CodeBase.Infrastructure.Factory;
-using CodeBase.Infrastructure.Services.Input;
-using Fusion;
-using Fusion.Sockets;
-using MessagePipe;
+using CodeBase.Infrastructure.ECS;
+using Unity.Entities;
 using UnityEngine;
-using Input = CodeBase.GameLogic.Input.Input;
 
 namespace CodeBase.Infrastructure.FSM.State
 {
-    public class ServerLoopState : IState, INetworkRunnerCallbacks
+    public class ServerLoopState : IState
     {
-        private readonly IStateMachine _stateMachine;
-        private readonly IGameFactory _gameFactory;
-        private readonly IInputService _inputService;
-        private readonly NetworkRunner _networkRunner;
+        private readonly SystemEngine _systemEngine;
+        private World _serverWorld;
 
-        private bool _isServerSpawned;
-
-        public ServerLoopState(IStateMachine stateMachine, IGameFactory gameFactory, IInputService inputService,
-            NetworkRunner networkRunner)
+        public ServerLoopState(SystemEngine systemEngine)
         {
-            _stateMachine = stateMachine;
-            _gameFactory = gameFactory;
-            _inputService = inputService;
-            _networkRunner = networkRunner;
+            _systemEngine = systemEngine;
         }
 
         public void Enter()
         {
-            _networkRunner.AddCallbacks(this);
+            _serverWorld = _systemEngine.ActiveWorld;
+
+            if (_serverWorld == null || !_serverWorld.IsCreated)
+            {
+                Debug.LogError("[DOTS NET] Server world is not available for loop state.");
+                return;
+            }
+
+            Debug.Log($"[DOTS NET] Server loop started in world '{_serverWorld.Name}'.");
         }
 
         public void Exit()
         {
-            _networkRunner.RemoveCallbacks(this);
-        }
-
-        public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
-        {
-        }
-
-        public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
-        {
-        }
-
-        public async void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
-        {
-            GameObject playerInstance = await _gameFactory.CreatePlayer(player);
-            
-            if (_isServerSpawned)
-                return;
-
-            _isServerSpawned = true;
-
-            await _gameFactory.CreateEntityPlayer(player, playerInstance);
-        }
-
-        public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
-        {
-        }
-
-        public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
-        {
-        }
-
-        public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason)
-        {
-        }
-
-        public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request,
-            byte[] token)
-        {
-        }
-
-        public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason)
-        {
-        }
-
-        public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message)
-        {
-        }
-
-        public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key,
-            ArraySegment<byte> data)
-        {
-        }
-
-        public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress)
-        {
-        }
-
-        public void OnInput(NetworkRunner runner, NetworkInput input)
-        {
-            var data = new Input
+            if (_serverWorld != null && _serverWorld.IsCreated)
             {
-                Move = _inputService.Move,
-                Look = _inputService.Look,
-                JumpTriggered = _inputService.JumpTriggered,
-                SprintProgress = _inputService.SprintProgress
-            };
+                _systemEngine.UnregisterWorld(_serverWorld, disposeWorld: true);
+                Debug.Log("[DOTS NET] Server loop stopped.");
+            }
 
-            input.Set(data);
-        }
-
-        public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input)
-        {
-        }
-
-        public void OnConnectedToServer(NetworkRunner runner)
-        {
-        }
-
-        public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
-        {
-        }
-
-        public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data)
-        {
-        }
-
-        public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken)
-        {
-        }
-
-        public void OnSceneLoadDone(NetworkRunner runner)
-        {
-        }
-
-        public void OnSceneLoadStart(NetworkRunner runner)
-        {
+            _serverWorld = null;
         }
     }
 }
