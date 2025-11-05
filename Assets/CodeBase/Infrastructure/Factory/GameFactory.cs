@@ -1,4 +1,4 @@
-﻿using CodeBase.Config.Player;
+using CodeBase.Config.Player;
 using CodeBase.GameLogic.Common;
 using CodeBase.GameLogic.CustomPhysics;
 using CodeBase.GameLogic.Input;
@@ -50,13 +50,11 @@ namespace CodeBase.Infrastructure.Factory
             var transform = instance.transform;
             var controller = instance.GetComponent<CharacterController>();
             var camera = instance.GetComponentInChildren<Camera>();
+            var networkInputReceiver = instance.GetComponent<NetworkInputReceiver>();
 
-            _entityManager.AddComponentData(entity, new LocalTransform
-            {
-                Position = transform.position,
-                Rotation = transform.rotation,
-                Scale = 1f
-            });
+            float3 position = transform.position;
+            quaternion rotation = transform.rotation;
+            _entityManager.AddComponentData(entity, LocalTransform.FromPositionRotationScale(position, rotation, 1f));
 
             _entityManager.AddComponentData(entity, new PhysicsComponent
             {
@@ -84,17 +82,9 @@ namespace CodeBase.Infrastructure.Factory
 
             _entityManager.AddComponentData(entity, new CameraRotationComponent
             {
-                Sensitivity = playerConfig.CameraSensitivityDefault
-            });
-
-            _entityManager.AddComponentData(entity, new CameraTransform
-            {
-                Value = float4x4.TRS(transform.position, transform.rotation, new float3(1, 1, 1))
-            });
-
-            _entityManager.AddComponentData(entity, new MountTransform
-            {
-                Value = float4x4.identity
+                Sensitivity = playerConfig.CameraSensitivityDefault,
+                VerticalAngle = 0f,
+                HorizontalAngle = transform.eulerAngles.y
             });
 
             _entityManager.AddComponentData(entity, new InteractComponent
@@ -105,10 +95,13 @@ namespace CodeBase.Infrastructure.Factory
 
             _entityManager.AddComponentData(entity, new InputComponent
             {
-                Look = float2.zero,
-                Move = float2.zero,
-                Jump = false,
-                Sprint = false
+                PlayerInput = new Input
+                {
+                    Move = Vector2.zero,
+                    Look = Vector3.zero,
+                    JumpTriggered = false,
+                    SprintProgress = false
+                }
             });
 
             _entityManager.AddComponentData(entity, new CharacterControllerComponent
@@ -120,6 +113,22 @@ namespace CodeBase.Infrastructure.Factory
             {
                 Camera = camera
             });
+
+            _entityManager.AddComponentData(entity, new NetworkInputReceiverComponent
+            {
+                PlayerInput = new Input
+                {
+                    Move = Vector2.zero,
+                    Look = Vector3.zero,
+                    JumpTriggered = false,
+                    SprintProgress = false
+                }
+            });
+
+            if (networkInputReceiver != null)
+            {
+                networkInputReceiver.BindEntity(entity, _entityManager.World);
+            }
 
             Debug.Log($"[DOTS] Created player entity: {entity.Index}");
             return entity;

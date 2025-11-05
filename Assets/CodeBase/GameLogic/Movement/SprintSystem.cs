@@ -1,38 +1,19 @@
-﻿using CodeBase.GameLogic.Common;
+using CodeBase.GameLogic.Common;
 using CodeBase.GameLogic.Input;
-using Scellecs.Morpeh;
-using UnityEngine;
+using Unity.Entities;
 
 namespace CodeBase.GameLogic.Movement
 {
-    public class SprintSystem : ISystem
+    public partial class SprintSystem : SystemBase
     {
-        private Filter _moveFilter;
-        public World World { get; set; }
-
-        public void OnAwake()
+        protected override void OnUpdate()
         {
-            _moveFilter = World.Filter
-                .With<MoveComponent>()
-                .With<InputComponent>()
-                .With<PlayerTag>()
-                .Build();
-        }
-
-        public void OnUpdate(float deltaTime)
-        {
-            foreach (var entity in _moveFilter)
+            foreach (var (move, input) in SystemAPI.Query<RefRW<MoveComponent>, RefRO<InputComponent>>().WithAll<PlayerTag>())
             {
-                ref var moveComponent = ref entity.GetComponent<MoveComponent>();
-                ref var inputComponent = ref entity.GetComponent<InputComponent>();
-
-                moveComponent.Speed =
-                    inputComponent.PlayerInput.SprintProgress ? moveComponent.SprintSpeed : moveComponent.SpeedBase;
+                move.ValueRW.Speed = input.ValueRO.PlayerInput.SprintProgress
+                    ? move.ValueRO.SprintSpeed
+                    : move.ValueRO.SpeedBase;
             }
-        }
-
-        public void Dispose()
-        {
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using Unity.Entities;
+using Unity.Entities;
 using UnityEngine;
 
 namespace CodeBase.GameLogic.CustomPhysics
@@ -8,6 +8,6 @@ namespace CodeBase.GameLogic.CustomPhysics
         public float CheckGroundDistance;
         public bool IsGrounded;
         public Vector3 GroundPoint;
-        public LayerMask LayerGround;
+        public LayerMask GroundMask;
     }
 }

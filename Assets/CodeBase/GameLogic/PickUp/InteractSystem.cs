@@ -1,41 +1,41 @@
-﻿using CodeBase.GameLogic.Common;
+using CodeBase.GameLogic.Common;
 using CodeBase.GameLogic.Movement;
-using Scellecs.Morpeh;
+using Unity.Entities;
 using UnityEngine;
 
 namespace CodeBase.GameLogic.PickUp
 {
-    public class InteractSystem : ISystem
+    public partial class InteractSystem : SystemBase
     {
-        public World World { get; set; }
+        private RaycastHit[] _hits;
 
-        private Filter _playerFilter;
-
-        private RaycastHit[] _hits = new RaycastHit[2];
-
-        public void OnAwake()
+        protected override void OnCreate()
         {
-            _playerFilter = World.Filter
-                .With<PlayerTag>()
-                .With<CameraComponent>()
-                .With<InteractComponent>()
-                .Build();
+            _hits = new RaycastHit[2];
         }
 
-        public void OnUpdate(float deltaTime)
+        protected override void OnDestroy()
         {
-            foreach (var entity in _playerFilter)
+            _hits = null;
+        }
+
+        protected override void OnUpdate()
+        {
+            foreach (var (cameraComponent, interactComponent) in
+                     SystemAPI.Query<ManagedAPI<CameraComponent>, RefRO<InteractComponent>>().WithAll<PlayerTag>())
             {
-                ref var transformComponent = ref entity.GetComponent<CameraComponent>();
-                ref var interactComponent = ref entity.GetComponent<InteractComponent>();
+                Camera camera = cameraComponent.Value.Camera;
+                if (camera == null)
+                    continue;
 
-                var origin = transformComponent.Camera.transform.position;
-                var direction = transformComponent.Camera.transform.forward;
+                Vector3 origin = camera.transform.position;
+                Vector3 direction = camera.transform.forward;
 
-                int hitCount = UnityEngine.Physics.RaycastNonAlloc(origin, direction, _hits,
-                    interactComponent.InteractDistance,
-                    interactComponent.InteractMask);
+                int hitCount = Physics.RaycastNonAlloc(origin, direction, _hits,
+                    interactComponent.ValueRO.InteractDistance,
+                    interactComponent.ValueRO.InteractMask);
 
+#if UNITY_EDITOR
                 if (hitCount > 0)
                 {
                     var hit = _hits[0];
@@ -44,14 +44,10 @@ namespace CodeBase.GameLogic.PickUp
                 }
                 else
                 {
-                    Debug.DrawRay(origin, direction * interactComponent.InteractDistance, Color.red);
+                    Debug.DrawRay(origin, direction * interactComponent.ValueRO.InteractDistance, Color.red);
                 }
+#endif
             }
-        }
-
-        public void Dispose()
-        {
-            _hits = null;
         }
     }
 }

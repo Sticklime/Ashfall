@@ -1,46 +1,40 @@
-﻿using CodeBase.GameLogic.Common;
+using CodeBase.GameLogic.Common;
 using CodeBase.GameLogic.Input;
-using Scellecs.Morpeh;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 
 namespace CodeBase.GameLogic.Movement
 {
-    public class CharacterMovementSystem : ISystem
+    public partial class CharacterMovementSystem : SystemBase
     {
-        private Filter _filter;
-        public World World { get; set; }
-
-        public void OnAwake()
+        protected override void OnUpdate()
         {
-            _filter = World.Filter
-                .With<MoveComponent>()
-                .With<CharacterControllerComponent>()
-                .With<TransformComponent>()
-                .With<PlayerTag>()
-                .Build();
-        }
+            float deltaTime = SystemAPI.Time.DeltaTime;
 
-        public void OnUpdate(float deltaTime)
-        {
-            foreach (var entity in _filter)
+            foreach (var (move, input, controller, transform) in
+                     SystemAPI.Query<RefRW<MoveComponent>, RefRO<InputComponent>, ManagedAPI<CharacterControllerComponent>, RefRW<LocalTransform>>()
+                         .WithAll<PlayerTag>())
             {
-                ref var moveComponent = ref entity.GetComponent<MoveComponent>();
-                ref var controllerComponent = ref entity.GetComponent<CharacterControllerComponent>();
-                ref var transformComponent = ref entity.GetComponent<TransformComponent>();
-                ref var inputComponent = ref entity.GetComponent<InputComponent>();
-            
-                Vector2 moveInput = inputComponent.PlayerInput.Move;
-                Transform transform = transformComponent.Transform;
+                Vector2 moveInput = input.ValueRO.PlayerInput.Move;
 
-                Vector3 direction = transform.right * moveInput.x + transform.forward * moveInput.y;
-                Vector3 movement = direction.normalized * moveComponent.Speed * deltaTime;
+                if (moveInput.sqrMagnitude <= math.EPSILON)
+                    continue;
 
-                controllerComponent.Controller.Move(movement);
+                float3 forward = math.mul(transform.ValueRO.Rotation, new float3(0f, 0f, 1f));
+                float3 right = math.mul(transform.ValueRO.Rotation, new float3(1f, 0f, 0f));
+
+                float3 direction = math.normalizesafe(right * moveInput.x + forward * moveInput.y);
+                float3 movement = direction * move.ValueRO.Speed * deltaTime;
+                movement.y = 0f;
+
+                CharacterController characterController = controller.Value.Controller;
+                characterController.Move(new Vector3(movement.x, movement.y, movement.z));
+
+                Vector3 controllerPosition = characterController.transform.position;
+                transform.ValueRW.Position = new float3(controllerPosition.x, controllerPosition.y, controllerPosition.z);
             }
-        }
-
-        public void Dispose()
-        {
         }
     }
 }

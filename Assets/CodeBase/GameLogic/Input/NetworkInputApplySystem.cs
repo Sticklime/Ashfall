@@ -1,10 +1,8 @@
-﻿using Unity.Burst;
 using Unity.Entities;
 using Unity.NetCode;
 
 namespace CodeBase.GameLogic.Input
 {
-    [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(GhostInputSystemGroup))]
     public partial struct NetworkInputApplySystem : ISystem
