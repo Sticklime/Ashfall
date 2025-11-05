@@ -1,4 +1,4 @@
-﻿using CodeBase.Infrastructure.ECS;
+using CodeBase.Infrastructure.ECS;
 using Unity.Entities;
 using Unity.NetCode;
 using Unity.Networking.Transport;
@@ -8,6 +8,8 @@ namespace CodeBase.Infrastructure.FSM.State
 {
     public class StartServerState : IState
     {
+        private const ushort DefaultPort = 7777;
+
         private readonly IStateMachine _stateMachine;
         private readonly SystemEngine _systemEngine;
         private World _serverWorld;
@@ -23,26 +25,21 @@ namespace CodeBase.Infrastructure.FSM.State
         {
             _systemEngine.Initialize();
 
-            _serverWorld = new World("ServerWorld");
+            _serverWorld = ClientServerBootstrap.CreateServerWorld("ServerWorld");
             World.DefaultGameObjectInjectionWorld = _serverWorld;
 
-            ClientServerBootstrap.CreateServerWorld("ServerWorld");
-            var networkDriver = new UnityTransport();
-            networkDriver.SetConnectionData("0.0.0.0", 7777, "0.0.0.0");
+            var entityManager = _serverWorld.EntityManager;
 
-            var networkEntity = _serverWorld.EntityManager.CreateEntity(typeof(NetworkStreamDriver));
-            _serverWorld.EntityManager.SetComponentData(networkEntity, new NetworkStreamDriver { Value = networkDriver.Driver });
+            var listenEndpoint = NetworkEndpoint.AnyIpv4;
+            listenEndpoint.Port = DefaultPort;
 
-            _serverEntity = networkEntity;
+            _serverEntity = entityManager.CreateEntity(typeof(NetworkStreamRequestListen));
+            entityManager.SetComponentData(_serverEntity, new NetworkStreamRequestListen
+            {
+                Endpoint = listenEndpoint
+            });
 
-            var simulation = _serverWorld.GetOrCreateSystemManaged<SimulationSystemGroup>();
-            var networkReceive = _serverWorld.GetOrCreateSystemManaged<NetworkStreamReceiveSystemGroup>();
-            var ghostSend = _serverWorld.GetOrCreateSystemManaged<GhostSendSystemGroup>();
-
-            simulation.AddSystemToUpdateList(networkReceive);
-            simulation.AddSystemToUpdateList(ghostSend);
-
-            Debug.Log("[DOTS NET] Server started on port 7777");
+            Debug.Log($"[DOTS NET] Server started on port {listenEndpoint.Port}");
 
             _stateMachine.Enter<ServerLoopState>();
         }
@@ -51,6 +48,12 @@ namespace CodeBase.Infrastructure.FSM.State
         {
             if (_serverWorld != null && _serverWorld.IsCreated)
             {
+                if (_serverEntity != Entity.Null && _serverWorld.EntityManager.Exists(_serverEntity))
+                {
+                    _serverWorld.EntityManager.DestroyEntity(_serverEntity);
+                    _serverEntity = Entity.Null;
+                }
+
                 _serverWorld.Dispose();
                 _serverWorld = null;
             }
