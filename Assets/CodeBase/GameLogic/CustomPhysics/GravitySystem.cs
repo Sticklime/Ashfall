@@ -13,12 +13,15 @@ namespace CodeBase.GameLogic.CustomPhysics
         protected override void OnUpdate()
         {
             float deltaTime = SystemAPI.Time.DeltaTime;
+            var entityManager = EntityManager;
 
-            foreach (var (physics, groundCheck, transform, controller) in
-                     SystemAPI.Query<RefRW<PhysicsComponent>, RefRO<GroundCheckComponent>, RefRW<LocalTransform>, ManagedAPI<CharacterControllerComponent>>()
-                         .WithAll<PlayerTag>())
+            foreach (var (physics, groundCheck, transform, entity) in
+                     SystemAPI.Query<RefRW<PhysicsComponent>, RefRO<GroundCheckComponent>, RefRW<LocalTransform>>()
+                         .WithAll<PlayerTag, CharacterControllerComponent>()
+                         .WithEntityAccess())
             {
-                CharacterController characterController = controller.Value.Controller;
+                var controller = entityManager.GetComponentData<CharacterControllerComponent>(entity);
+                CharacterController characterController = controller.Controller;
                 if (characterController == null)
                     continue;
 

@@ -1,11 +1,10 @@
-using Fusion;
 using Unity.Entities;
+using UnityEngine;
 
 namespace CodeBase.GameLogic.Movement
 {
     public class CameraComponent : IComponentData
     {
-        public UnityEngine.Camera Camera;
-        public PlayerRef Owned;
+        public Camera Camera;
     }
 }

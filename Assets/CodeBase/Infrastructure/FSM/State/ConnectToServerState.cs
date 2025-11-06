@@ -1,44 +1,58 @@
-﻿using CodeBase.Infrastructure.Factory;
+﻿using CodeBase.Infrastructure.ECS;
 using Cysharp.Threading.Tasks;
-using Fusion;
+using Unity.Entities;
+using Unity.NetCode;
+using Unity.Networking.Transport;
 using UnityEngine;
 
 namespace CodeBase.Infrastructure.FSM.State
 {
     public class ConnectToServerState : IState
     {
-        private readonly IStateMachine _stateMachine;
-        private readonly IGameFactory _gameFactory;
-        private readonly NetworkRunner _networkRunner;
+        private const ushort DefaultPort = 7777;
+        private const string DefaultServerAddress = "127.0.0.1";
 
-        public ConnectToServerState(IStateMachine stateMachine, IGameFactory gameFactory, NetworkRunner networkRunner)
+        private readonly IStateMachine _stateMachine;
+        private readonly SystemEngine _systemEngine;
+        private World _clientWorld;
+        private Entity _clientEntity;
+
+        public ConnectToServerState(IStateMachine stateMachine, SystemEngine systemEngine)
         {
             _stateMachine = stateMachine;
-            _gameFactory = gameFactory;
-            _networkRunner = networkRunner;
+            _systemEngine = systemEngine;
         }
 
-        public async void Enter()
+        public void Enter()
         {
-            _stateMachine.Enter<ClientLoopState>();
+            ConnectAsync().Forget();
+        }
 
-            var startGameArgs = new StartGameArgs
+        private async UniTaskVoid ConnectAsync()
+        {
+            _systemEngine.Initialize();
+
+            _clientWorld = ClientServerBootstrap.CreateClientWorld("ClientWorld");
+            World.DefaultGameObjectInjectionWorld = _clientWorld;
+
+            var entityManager = _clientWorld.EntityManager;
+            var connectEndpoint = NetworkEndpoint.Parse(DefaultServerAddress, DefaultPort);
+
+            _clientEntity = entityManager.CreateEntity(typeof(NetworkStreamRequestConnect));
+            entityManager.SetComponentData(_clientEntity, new NetworkStreamRequestConnect
             {
-                GameMode = GameMode.Client,
-                SessionName = "DefaultRoom",
-                Scene = SceneRef.FromIndex(0),
-                SceneManager = _networkRunner.gameObject.AddComponent<NetworkSceneManagerDefault>()
-            };
+                Endpoint = connectEndpoint
+            });
+
+            Debug.Log($"[DOTS NET] Client connecting to {DefaultServerAddress}:{DefaultPort}");
             
-            var result = await _networkRunner.StartGame(startGameArgs);
+            await UniTask.WaitUntil(() =>
+                _clientWorld.IsCreated &&
+                _clientWorld.EntityManager.CreateEntityQuery(typeof(NetworkStreamConnection)).CalculateEntityCount() > 0);
 
-            if (result.Ok)
-            {
-            }
-            else
-            {
-                Debug.LogError($"Connection failed: {result.ShutdownReason}");
-            }
+            Debug.Log("[DOTS NET] Client connected");
+
+            _stateMachine.Enter<ClientLoopState>();
         }
 
         public void Exit()

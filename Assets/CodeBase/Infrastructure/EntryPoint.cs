@@ -6,7 +6,7 @@ using VContainer.Unity;
 
 namespace CodeBase.Infrastructure
 {
-    public class EntryPoint : IStartable, ITickable, IFixedTickable, ILateTickable, IPostTickable, IDisposable
+    public class EntryPoint : IStartable
     {
         private readonly SystemEngine _systemEngine;
         private readonly IStateMachine _stateMachine;
@@ -27,18 +27,6 @@ namespace CodeBase.Infrastructure
 
             _stateMachine.Enter<BootState>();
         }
-
-        public void Tick() =>
-            _systemEngine.Tick();
-
-        public void FixedTick() =>
-            _systemEngine.FixedTick();
-
-        public void LateTick() =>
-            _systemEngine.LateTick();
-
-        public void PostTick() =>
-            _systemEngine.PostTick();
 
         public void Dispose() =>
             _systemEngine.Dispose();

@@ -9,6 +9,7 @@ using CodeBase.Infrastructure.Services.Config;
 using Cysharp.Threading.Tasks;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 using Unity.Transforms;
 using UnityEngine;
 using VContainer;
@@ -20,7 +21,7 @@ namespace CodeBase.Infrastructure.Factory
     {
         private readonly IConfigProvider _configProvider;
         private readonly IAssetProvider _assetProvider;
-        private readonly EntityManager _entityManager;
+        private EntityManager _entityManager;
         private readonly IObjectResolver _resolver;
 
         public GameFactory(IConfigProvider configProvider, IAssetProvider assetProvider, World world, IObjectResolver resolver)
@@ -37,12 +38,7 @@ namespace CodeBase.Infrastructure.Factory
             GameObject prefab = await _assetProvider.LoadAsync<GameObject>(playerConfig.PlayerReference);
             GameObject instance = Object.Instantiate(prefab, Vector3.zero, Quaternion.identity);
             _resolver.InjectGameObject(instance);
-            return instance;
-        }
 
-        public async UniTask<Entity> CreateEntityPlayer(GameObject instance)
-        {
-            PlayerConfig playerConfig = await _configProvider.GetPlayerConfig();
             Entity entity = _entityManager.CreateEntity();
 
             _entityManager.AddComponent<PlayerTag>(entity);
@@ -50,7 +46,6 @@ namespace CodeBase.Infrastructure.Factory
             var transform = instance.transform;
             var controller = instance.GetComponent<CharacterController>();
             var camera = instance.GetComponentInChildren<Camera>();
-            var networkInputReceiver = instance.GetComponent<NetworkInputReceiver>();
 
             float3 position = transform.position;
             quaternion rotation = transform.rotation;
@@ -95,12 +90,13 @@ namespace CodeBase.Infrastructure.Factory
 
             _entityManager.AddComponentData(entity, new InputComponent
             {
-                PlayerInput = new Input
+                PlayerInput = new PlayerCommand
                 {
                     Move = Vector2.zero,
                     Look = Vector3.zero,
                     JumpTriggered = false,
-                    SprintProgress = false
+                    SprintProgress = false,
+                    Tick = default
                 }
             });
 
@@ -114,30 +110,30 @@ namespace CodeBase.Infrastructure.Factory
                 Camera = camera
             });
 
-            _entityManager.AddComponentData(entity, new NetworkInputReceiverComponent
+            var commandEntity = _entityManager.CreateEntity();
+            var commandBuffer = _entityManager.AddBuffer<PlayerCommand>(commandEntity);
+            
+            commandBuffer.Add(new PlayerCommand
             {
-                PlayerInput = new Input
-                {
-                    Move = Vector2.zero,
-                    Look = Vector3.zero,
-                    JumpTriggered = false,
-                    SprintProgress = false
-                }
+                Move = Vector2.zero,
+                Look = Vector3.zero,
+                JumpTriggered = false,
+                SprintProgress = false,
+                Tick = default
             });
 
-            if (networkInputReceiver != null)
-            {
-                networkInputReceiver.BindEntity(entity, _entityManager.World);
-            }
+            if (!_entityManager.HasComponent<CommandTarget>(entity)) 
+                _entityManager.AddComponent<CommandTarget>(entity);
+            
+            _entityManager.SetComponentData(entity, new CommandTarget { targetEntity = commandEntity });
 
             Debug.Log($"[DOTS] Created player entity: {entity.Index}");
-            return entity;
+            return instance;
         }
     }
 
     public interface IGameFactory
     {
         UniTask<GameObject> CreatePlayer();
-        UniTask<Entity> CreateEntityPlayer(GameObject instance);
     }
 }

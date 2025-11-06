@@ -46,20 +46,7 @@ namespace CodeBase.Infrastructure.FSM.State
 
         public void Exit()
         {
-            if (_serverWorld != null && _serverWorld.IsCreated)
-            {
-                if (_serverEntity != Entity.Null && _serverWorld.EntityManager.Exists(_serverEntity))
-                {
-                    _serverWorld.EntityManager.DestroyEntity(_serverEntity);
-                    _serverEntity = Entity.Null;
-                }
-
-                _serverWorld.Dispose();
-                _serverWorld = null;
-            }
-
-            _systemEngine.Dispose();
-            Debug.Log("[DOTS NET] Server stopped");
+        
         }
     }
 }

@@ -13,11 +13,21 @@ namespace CodeBase.GameLogic.Movement
         protected override void OnUpdate()
         {
             float deltaTime = SystemAPI.Time.DeltaTime;
+            var entityManager = EntityManager;
 
-            foreach (var (controller, jump, physics, groundCheck, input, transform) in
-                     SystemAPI.Query<ManagedAPI<CharacterControllerComponent>, RefRO<JumpComponent>, RefRW<PhysicsComponent>, RefRO<GroundCheckComponent>, RefRO<InputComponent>, RefRW<LocalTransform>>()
-                         .WithAll<PlayerTag>())
+            foreach (var (jump, physics, groundCheck, input, transform, entity) in
+                     SystemAPI.Query<RefRO<JumpComponent>, RefRW<PhysicsComponent>, RefRO<GroundCheckComponent>, RefRO<InputComponent>, RefRW<LocalTransform>>()
+                         .WithAll<PlayerTag>()
+                         .WithEntityAccess())
             {
+                if (!entityManager.HasComponent<CharacterControllerComponent>(entity))
+                    continue;
+
+                var controller = entityManager.GetComponentData<CharacterControllerComponent>(entity);
+                CharacterController characterController = controller.Controller;
+                if (characterController == null)
+                    continue;
+
                 if (input.ValueRO.PlayerInput.JumpTriggered && groundCheck.ValueRO.IsGrounded)
                 {
                     float jumpVelocity = math.sqrt(math.max(0f, jump.ValueRO.JumpForce * 2f * physics.ValueRO.Weight));
@@ -25,8 +35,6 @@ namespace CodeBase.GameLogic.Movement
                 }
 
                 float3 velocity = physics.ValueRO.Velocity;
-
-                CharacterController characterController = controller.Value.Controller;
                 Vector3 moveVector = new Vector3(0f, velocity.y, 0f) * deltaTime;
                 characterController.Move(moveVector);
 

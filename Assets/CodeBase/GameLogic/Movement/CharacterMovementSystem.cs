@@ -12,11 +12,21 @@ namespace CodeBase.GameLogic.Movement
         protected override void OnUpdate()
         {
             float deltaTime = SystemAPI.Time.DeltaTime;
+            var entityManager = EntityManager;
 
-            foreach (var (move, input, controller, transform) in
-                     SystemAPI.Query<RefRW<MoveComponent>, RefRO<InputComponent>, ManagedAPI<CharacterControllerComponent>, RefRW<LocalTransform>>()
-                         .WithAll<PlayerTag>())
+            foreach (var (move, input, transform, entity) in
+                     SystemAPI.Query<RefRW<MoveComponent>, RefRO<InputComponent>, RefRW<LocalTransform>>()
+                         .WithAll<PlayerTag>()
+                         .WithEntityAccess())
             {
+                if (!entityManager.HasComponent<CharacterControllerComponent>(entity))
+                    continue;
+
+                var controller = entityManager.GetComponentData<CharacterControllerComponent>(entity);
+                CharacterController characterController = controller.Controller;
+                if (characterController == null)
+                    continue;
+
                 Vector2 moveInput = input.ValueRO.PlayerInput.Move;
 
                 if (moveInput.sqrMagnitude <= math.EPSILON)
@@ -29,7 +39,6 @@ namespace CodeBase.GameLogic.Movement
                 float3 movement = direction * move.ValueRO.Speed * deltaTime;
                 movement.y = 0f;
 
-                CharacterController characterController = controller.Value.Controller;
                 characterController.Move(new Vector3(movement.x, movement.y, movement.z));
 
                 Vector3 controllerPosition = characterController.transform.position;

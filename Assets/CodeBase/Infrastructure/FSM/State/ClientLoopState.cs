@@ -1,154 +1,68 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Linq;
+using CodeBase.Infrastructure.ECS;
 using CodeBase.Infrastructure.Factory;
 using CodeBase.Infrastructure.Services.Input;
-using Cysharp.Threading.Tasks;
-using Fusion;
-using Fusion.Sockets;
-using MessagePipe;
+using Unity.Entities;
+using Unity.NetCode;
 using UnityEngine;
 using VContainer;
-using VContainer.Unity;
 
 namespace CodeBase.Infrastructure.FSM.State
 {
-    public class ClientLoopState : IState, INetworkRunnerCallbacks, IPlayerJoined
+    public class ClientLoopState : IState
     {
         private readonly IStateMachine _stateMachine;
-        private readonly NetworkRunner _networkRunner;
         private readonly IInputService _inputService;
         private readonly IObjectResolver _objectResolver;
         private readonly IGameFactory _gameFactory;
+        private readonly SystemEngine _systemEngine;
 
-        public ClientLoopState(IStateMachine stateMachine, NetworkRunner networkRunner, IInputService inputService,
-            IObjectResolver objectResolver, IGameFactory gameFactory)
+        public ClientLoopState(
+            IStateMachine stateMachine,
+            IInputService inputService,
+            IObjectResolver objectResolver,
+            IGameFactory gameFactory,
+            SystemEngine systemEngine)
         {
             _stateMachine = stateMachine;
-            _networkRunner = networkRunner;
             _inputService = inputService;
             _objectResolver = objectResolver;
             _gameFactory = gameFactory;
+            _systemEngine = systemEngine;
         }
 
         public void Enter()
         {
-            _networkRunner.AddCallbacks(this);
+            Debug.Log("[ClientLoopState] Client loop started");
         }
 
         public void Exit()
         {
-            _networkRunner.RemoveCallbacks(this);
-        }
+            var clientWorld = World.All.FirstOrDefault(w => w.Name == "ClientWorld");
 
-        public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
-        {
-        }
-
-        public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
-        {
-        }
-
-        public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
-        {
-            // WaitForPlayerObjectAsync(player).Forget();
-        }
-
-        private async UniTaskVoid WaitForPlayerObjectAsync(PlayerRef player)
-        {
-            NetworkObject playerObj = null;
-
-            await UniTask.WaitUntil(() =>
+            if (clientWorld != null && clientWorld.IsCreated)
             {
-                bool found = _networkRunner.TryGetPlayerObject(player, out playerObj);
-                if (!found)
-                    Debug.Log($"Still waiting for player object of {player}");
-                return found;
-            });
+                var entityManager = clientWorld.EntityManager;
 
-            Debug.Log($"✅ Player object found: {playerObj.name}");
-            await _gameFactory.CreateEntityPlayer(player, playerObj.gameObject);
-        }
+                var query = entityManager.CreateEntityQuery(typeof(NetworkStreamRequestConnect));
+                var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
 
+                foreach (var entity in entities)
+                {
+                    if (entityManager.Exists(entity))
+                        entityManager.DestroyEntity(entity);
+                }
 
-        public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
-        {
-        }
+                entities.Dispose();
+                query.Dispose();
 
-        public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
-        {
-        }
+                clientWorld.Dispose();
+                Debug.Log("[DOTS NET] Client world disposed");
+            }
 
-        public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason)
-        {
-        }
+            _systemEngine?.Dispose();
 
-        public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request,
-            byte[] token)
-        {
-        }
-
-        public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason)
-        {
-        }
-
-        public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message)
-        {
-        }
-
-        public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key,
-            ArraySegment<byte> data)
-        {
-        }
-
-        public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress)
-        {
-        }
-
-        public void OnInput(NetworkRunner runner, NetworkInput input)
-        {
-            var data = new GameLogic.Input.Input
-            {
-                Move = _inputService.Move,
-                Look = _inputService.Look,
-                JumpTriggered = _inputService.JumpTriggered,
-                SprintProgress = _inputService.SprintProgress
-            };
-
-            input.Set(data);
-        }
-
-        public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input)
-        {
-        }
-
-        public void OnConnectedToServer(NetworkRunner runner)
-        {
-        }
-
-        public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
-        {
-        }
-
-        public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data)
-        {
-        }
-
-        public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken)
-        {
-        }
-
-        public void OnSceneLoadDone(NetworkRunner runner)
-        {
-        }
-
-        public void OnSceneLoadStart(NetworkRunner runner)
-        {
-        }
-
-        public void PlayerJoined(PlayerRef player)
-        {
-            WaitForPlayerObjectAsync(player).Forget();
+            Debug.Log("[DOTS NET] Client disconnected");
         }
     }
 }

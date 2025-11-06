@@ -4,6 +4,6 @@ namespace CodeBase.GameLogic.Input
 {
     public struct InputComponent : IComponentData
     {
-        public Input PlayerInput;
+        public PlayerCommand PlayerInput;
     }
 }

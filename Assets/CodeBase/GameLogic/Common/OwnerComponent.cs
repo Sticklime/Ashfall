@@ -4,6 +4,6 @@ namespace CodeBase.GameLogic.Common
 {
     public struct OwnerComponent : IComponentData
     {
-        public PlayerRef Owner;
+        public int NetworkId;
     }
 }

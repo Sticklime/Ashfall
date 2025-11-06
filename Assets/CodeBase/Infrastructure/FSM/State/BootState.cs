@@ -1,6 +1,5 @@
 using CodeBase.Infrastructure.ECS;
 using CodeBase.Infrastructure.Services.Input;
-using Fusion;
 
 namespace CodeBase.Infrastructure.FSM.State
 {
@@ -9,15 +8,12 @@ namespace CodeBase.Infrastructure.FSM.State
         private readonly SystemEngine _systemEngine;
         private readonly IStateMachine _stateMachine;
         private readonly IInputService _inputService;
-        private readonly NetworkRunner _networkRunner;
 
-        public BootState(SystemEngine systemEngine, IStateMachine stateMachine, IInputService inputService,
-            NetworkRunner networkRunner)
+        public BootState(SystemEngine systemEngine, IStateMachine stateMachine, IInputService inputService)
         {
             _systemEngine = systemEngine;
             _stateMachine = stateMachine;
             _inputService = inputService;
-            _networkRunner = networkRunner;
         }
 
         public void Enter()

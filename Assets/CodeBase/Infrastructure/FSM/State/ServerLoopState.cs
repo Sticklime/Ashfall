@@ -1,136 +1,61 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Linq;
+using CodeBase.Infrastructure.ECS;
 using CodeBase.Infrastructure.Factory;
 using CodeBase.Infrastructure.Services.Input;
-using Fusion;
-using Fusion.Sockets;
-using MessagePipe;
+using Unity.Entities;
+using Unity.NetCode;
 using UnityEngine;
-using Input = CodeBase.GameLogic.Input.Input;
 
 namespace CodeBase.Infrastructure.FSM.State
 {
-    public class ServerLoopState : IState, INetworkRunnerCallbacks
+    public class ServerLoopState : IState
     {
         private readonly IStateMachine _stateMachine;
         private readonly IGameFactory _gameFactory;
         private readonly IInputService _inputService;
-        private readonly NetworkRunner _networkRunner;
+        private readonly SystemEngine _systemEngine;
 
-        private bool _isServerSpawned;
-
-        public ServerLoopState(IStateMachine stateMachine, IGameFactory gameFactory, IInputService inputService,
-            NetworkRunner networkRunner)
+        public ServerLoopState(IStateMachine stateMachine, IGameFactory gameFactory, 
+            IInputService inputService, SystemEngine systemEngine)
         {
             _stateMachine = stateMachine;
             _gameFactory = gameFactory;
             _inputService = inputService;
-            _networkRunner = networkRunner;
+            _systemEngine = systemEngine;
         }
 
         public void Enter()
         {
-            _networkRunner.AddCallbacks(this);
+            Debug.Log("[ServerLoopState] Server loop started");
         }
 
         public void Exit()
         {
-            _networkRunner.RemoveCallbacks(this);
-        }
+            var serverWorld = World.All.FirstOrDefault(w => w.Name == "ServerWorld");
 
-        public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
-        {
-        }
-
-        public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
-        {
-        }
-
-        public async void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
-        {
-            GameObject playerInstance = await _gameFactory.CreatePlayer(player);
-            
-            if (_isServerSpawned)
-                return;
-
-            _isServerSpawned = true;
-
-            await _gameFactory.CreateEntityPlayer(player, playerInstance);
-        }
-
-        public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
-        {
-        }
-
-        public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
-        {
-        }
-
-        public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason)
-        {
-        }
-
-        public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request,
-            byte[] token)
-        {
-        }
-
-        public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason)
-        {
-        }
-
-        public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message)
-        {
-        }
-
-        public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key,
-            ArraySegment<byte> data)
-        {
-        }
-
-        public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress)
-        {
-        }
-
-        public void OnInput(NetworkRunner runner, NetworkInput input)
-        {
-            var data = new Input
+            if (serverWorld is { IsCreated: true })
             {
-                Move = _inputService.Move,
-                Look = _inputService.Look,
-                JumpTriggered = _inputService.JumpTriggered,
-                SprintProgress = _inputService.SprintProgress
-            };
+                var entityManager = serverWorld.EntityManager;
 
-            input.Set(data);
-        }
+                var query = entityManager.CreateEntityQuery(typeof(NetworkStreamRequestListen));
+                var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
 
-        public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input)
-        {
-        }
+                foreach (var entity in entities)
+                {
+                    if (entityManager.Exists(entity))
+                        entityManager.DestroyEntity(entity);
+                }
 
-        public void OnConnectedToServer(NetworkRunner runner)
-        {
-        }
+                entities.Dispose();
+                query.Dispose();
 
-        public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
-        {
-        }
+                serverWorld.Dispose();
+                Debug.Log("[DOTS NET] Server world disposed");
+            }
 
-        public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data)
-        {
-        }
+            _systemEngine?.Dispose();
 
-        public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken)
-        {
-        }
-
-        public void OnSceneLoadDone(NetworkRunner runner)
-        {
-        }
-
-        public void OnSceneLoadStart(NetworkRunner runner)
-        {
+            Debug.Log("[DOTS NET] Server stopped");
         }
     }
 }

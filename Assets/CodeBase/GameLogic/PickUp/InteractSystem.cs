@@ -21,10 +21,18 @@ namespace CodeBase.GameLogic.PickUp
 
         protected override void OnUpdate()
         {
-            foreach (var (cameraComponent, interactComponent) in
-                     SystemAPI.Query<ManagedAPI<CameraComponent>, RefRO<InteractComponent>>().WithAll<PlayerTag>())
+            EntityManager entityManager = EntityManager;
+
+            foreach (var (interactComponent, entity) in
+                     SystemAPI.Query<RefRO<InteractComponent>>()
+                         .WithAll<PlayerTag>()
+                         .WithEntityAccess())
             {
-                Camera camera = cameraComponent.Value.Camera;
+                if (!entityManager.HasComponent<CameraComponent>(entity))
+                    continue;
+
+                var cameraComponent = entityManager.GetComponentData<CameraComponent>(entity);
+                Camera camera = cameraComponent.Camera;
                 if (camera == null)
                     continue;
 
