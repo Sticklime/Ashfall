@@ -6,6 +6,7 @@ using CodeBase.Infrastructure.Factory;
 using UnityEngine;
 using VContainer;
 
+[DisableAutoCreation]
 [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
 [UpdateInGroup(typeof(GhostSimulationSystemGroup))]
 public partial class PlayerSpawnSystem : SystemBase
@@ -17,13 +18,13 @@ public partial class PlayerSpawnSystem : SystemBase
     {
         if (_spawned)
             return;
-
+        
         if (World.IsServer())
         {
             foreach (var (networkId, entity) in
                      SystemAPI.Query<RefRO<NetworkId>>().WithEntityAccess().WithNone<PlayerTag>())
             {
-                SpawnAsync(true).Forget();
+                SpawnAsync(true, networkId.ValueRO.Value).Forget();
                 _spawned = true;
                 break;
             }
@@ -38,9 +39,9 @@ public partial class PlayerSpawnSystem : SystemBase
         }
     }
 
-    private async UniTaskVoid SpawnAsync(bool isServer)
+    private async UniTaskVoid SpawnAsync(bool isServer, int ownerNetworkId = -1)
     {
-        await _factory.CreatePlayer();
+        await _factory.CreatePlayer(isServer ? ownerNetworkId : -1);
 
         Debug.Log(isServer
             ? "[DOTS NET] Player spawned on SERVER"

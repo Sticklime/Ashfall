@@ -21,27 +21,49 @@ namespace CodeBase.Infrastructure.Factory
     {
         private readonly IConfigProvider _configProvider;
         private readonly IAssetProvider _assetProvider;
-        private EntityManager _entityManager;
         private readonly IObjectResolver _resolver;
 
-        public GameFactory(IConfigProvider configProvider, IAssetProvider assetProvider, World world, IObjectResolver resolver)
+        public GameFactory(IConfigProvider configProvider, IAssetProvider assetProvider, IObjectResolver resolver)
         {
             _configProvider = configProvider;
             _assetProvider = assetProvider;
-            _entityManager = world.EntityManager;
             _resolver = resolver;
         }
 
-        public async UniTask<GameObject> CreatePlayer()
+        public async UniTask<GameObject> CreatePlayer(int ownerNetworkId = -1)
         {
+            var world = World.DefaultGameObjectInjectionWorld;
+            if (world == null || !world.IsCreated)
+            {
+                Debug.LogError("[DOTS] Unable to create player — default world is not set or not created.");
+                return null;
+            }
+
+            var entityManager = world.EntityManager;
             PlayerConfig playerConfig = await _configProvider.GetPlayerConfig();
             GameObject prefab = await _assetProvider.LoadAsync<GameObject>(playerConfig.PlayerReference);
             GameObject instance = Object.Instantiate(prefab, Vector3.zero, Quaternion.identity);
             _resolver.InjectGameObject(instance);
 
-            Entity entity = _entityManager.CreateEntity();
+            Entity entity = entityManager.CreateEntity();
 
-            _entityManager.AddComponent<PlayerTag>(entity);
+            entityManager.AddComponent<PlayerTag>(entity);
+
+            if (ownerNetworkId >= 0)
+            {
+                entityManager.AddComponentData(entity, new OwnerComponent
+                {
+                    NetworkId = ownerNetworkId
+                });
+
+                if (!entityManager.HasComponent<GhostOwner>(entity))
+                {
+                    entityManager.AddComponentData(entity, new GhostOwner
+                    {
+                        NetworkId = ownerNetworkId
+                    });
+                }
+            }
 
             var transform = instance.transform;
             var controller = instance.GetComponent<CharacterController>();
@@ -49,46 +71,46 @@ namespace CodeBase.Infrastructure.Factory
 
             float3 position = transform.position;
             quaternion rotation = transform.rotation;
-            _entityManager.AddComponentData(entity, LocalTransform.FromPositionRotationScale(position, rotation, 1f));
+            entityManager.AddComponentData(entity, LocalTransform.FromPositionRotationScale(position, rotation, 1f));
 
-            _entityManager.AddComponentData(entity, new PhysicsComponent
+            entityManager.AddComponentData(entity, new PhysicsComponent
             {
                 Weight = playerConfig.Weight,
                 Velocity = float3.zero
             });
 
-            _entityManager.AddComponentData(entity, new MoveComponent
+            entityManager.AddComponentData(entity, new MoveComponent
             {
                 Speed = playerConfig.MoveSpeed,
                 SpeedBase = playerConfig.MoveSpeed,
                 SprintSpeed = playerConfig.SprintSpeed
             });
 
-            _entityManager.AddComponentData(entity, new JumpComponent
+            entityManager.AddComponentData(entity, new JumpComponent
             {
                 JumpForce = playerConfig.JumpForce
             });
 
-            _entityManager.AddComponentData(entity, new GroundCheckComponent
+            entityManager.AddComponentData(entity, new GroundCheckComponent
             {
                 CheckGroundDistance = playerConfig.CheckGroundDistance,
                 GroundMask = playerConfig.GroundCheckLayer
             });
 
-            _entityManager.AddComponentData(entity, new CameraRotationComponent
+            entityManager.AddComponentData(entity, new CameraRotationComponent
             {
                 Sensitivity = playerConfig.CameraSensitivityDefault,
                 VerticalAngle = 0f,
                 HorizontalAngle = transform.eulerAngles.y
             });
 
-            _entityManager.AddComponentData(entity, new InteractComponent
+            entityManager.AddComponentData(entity, new InteractComponent
             {
                 InteractDistance = playerConfig.InteractDistance,
                 InteractMask = playerConfig.InteractMask
             });
 
-            _entityManager.AddComponentData(entity, new InputComponent
+            entityManager.AddComponentData(entity, new InputComponent
             {
                 PlayerInput = new PlayerCommand
                 {
@@ -100,18 +122,18 @@ namespace CodeBase.Infrastructure.Factory
                 }
             });
 
-            _entityManager.AddComponentData(entity, new CharacterControllerComponent
+            entityManager.AddComponentData(entity, new CharacterControllerComponent
             {
                 Controller = controller
             });
 
-            _entityManager.AddComponentData(entity, new CameraComponent
+            entityManager.AddComponentData(entity, new CameraComponent
             {
                 Camera = camera
             });
 
-            var commandEntity = _entityManager.CreateEntity();
-            var commandBuffer = _entityManager.AddBuffer<PlayerCommand>(commandEntity);
+            var commandEntity = entityManager.CreateEntity();
+            var commandBuffer = entityManager.AddBuffer<PlayerCommand>(commandEntity);
             
             commandBuffer.Add(new PlayerCommand
             {
@@ -122,10 +144,10 @@ namespace CodeBase.Infrastructure.Factory
                 Tick = default
             });
 
-            if (!_entityManager.HasComponent<CommandTarget>(entity)) 
-                _entityManager.AddComponent<CommandTarget>(entity);
+            if (!entityManager.HasComponent<CommandTarget>(entity)) 
+                entityManager.AddComponent<CommandTarget>(entity);
             
-            _entityManager.SetComponentData(entity, new CommandTarget { targetEntity = commandEntity });
+            entityManager.SetComponentData(entity, new CommandTarget { targetEntity = commandEntity });
 
             Debug.Log($"[DOTS] Created player entity: {entity.Index}");
             return instance;
@@ -134,6 +156,6 @@ namespace CodeBase.Infrastructure.Factory
 
     public interface IGameFactory
     {
-        UniTask<GameObject> CreatePlayer();
+        UniTask<GameObject> CreatePlayer(int ownerNetworkId = -1);
     }
 }

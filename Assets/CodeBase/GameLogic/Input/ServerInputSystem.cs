@@ -4,6 +4,7 @@ using Unity.NetCode;
 
 namespace CodeBase.GameLogic.Input
 {
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateBefore(typeof(GhostInputSystemGroup))]
     public partial class ServerInputSystem : SystemBase
@@ -25,7 +26,7 @@ namespace CodeBase.GameLogic.Input
                 if (commandBufferData.Length == 0)
                     continue;
 
-                var command = commandBufferData[commandBufferData.Length - 1];
+                var command = commandBufferData[^1];
 
                 input.ValueRW.PlayerInput = new PlayerCommand
                 {

@@ -23,10 +23,9 @@ namespace CodeBase.Infrastructure.FSM.State
 
         public void Enter()
         {
-            _systemEngine.Initialize();
-
             _serverWorld = ClientServerBootstrap.CreateServerWorld("ServerWorld");
             World.DefaultGameObjectInjectionWorld = _serverWorld;
+            _systemEngine.InitializeWorld(_serverWorld);
 
             var entityManager = _serverWorld.EntityManager;
 

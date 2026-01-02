@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace CodeBase.GameLogic.Input
 {
+    [DisableAutoCreation]
     [UpdateInGroup(typeof(GhostInputSystemGroup))]
     public partial class ClientInputSystem : SystemBase
     {

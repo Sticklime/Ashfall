@@ -3,6 +3,7 @@ using CodeBase.GameLogic.CustomPhysics;
 using CodeBase.GameLogic.Movement;
 using CodeBase.GameLogic.PickUp;
 using Unity.Entities;
+using Unity.NetCode;
 using VContainer;
 
 namespace CodeBase.Infrastructure.ECS
@@ -20,27 +21,44 @@ namespace CodeBase.Infrastructure.ECS
 
         public void Initialize()
         {
+            InitializeWorld(_world);
             World.DefaultGameObjectInjectionWorld = _world;
-            var simulationGroup = _world.GetOrCreateSystemManaged<SimulationSystemGroup>();
-            
-            AddSystem<CameraRotationSystem>(simulationGroup);
-            AddSystem<CharacterMovementSystem>(simulationGroup);
-            AddSystem<SprintSystem>(simulationGroup);
-            AddSystem<JumpSystem>(simulationGroup);
-            AddSystem<GroundCheckSystem>(simulationGroup);
-            AddSystem<GravitySystem>(simulationGroup);
-            AddSystem<InteractSystem>(simulationGroup);
-            AddSystem<PlayerSpawnSystem>(simulationGroup);
-
             ScriptBehaviourUpdateOrder.AppendWorldToCurrentPlayerLoop(_world);
         }
 
-        private void AddSystem<T>(ComponentSystemGroup group) where T : ComponentSystemBase
+        public void InitializeWorld(World world)
         {
-            T system = _resolver.Resolve<T>();
-            _world.AddSystemManaged(system);
+            if (world == null || !world.IsCreated)
+                return;
+
+            var simulationGroup = world.GetOrCreateSystemManaged<SimulationSystemGroup>();
+
+            AddSystem<CameraRotationSystem>(world, simulationGroup);
+            AddSystem<CharacterMovementSystem>(world, simulationGroup);
+            AddSystem<SprintSystem>(world, simulationGroup);
+            AddSystem<JumpSystem>(world, simulationGroup);
+            AddSystem<GroundCheckSystem>(world, simulationGroup);
+            AddSystem<GravitySystem>(world, simulationGroup);
+            AddSystem<InteractSystem>(world, simulationGroup);
+
+            var ghostSimulationGroup = world.GetExistingSystemManaged<GhostSimulationSystemGroup>();
+
+            AddSystem<PlayerSpawnSystem>(world, ghostSimulationGroup);
+        }
+
+        private void AddSystem<TSystem>(World world, ComponentSystemGroup group)
+            where TSystem : ComponentSystemBase
+        {
+            if (world.GetExistingSystemManaged<TSystem>() != null)
+                return;
+
+            using var scope = _resolver.CreateScope(b => b.Register<TSystem>(Lifetime.Singleton));
+            TSystem system = scope.Resolve<TSystem>();
+
+            world.AddSystemManaged(system);
             group.AddSystemToUpdateList(system);
         }
+
 
         public void Dispose()
         {

@@ -30,10 +30,9 @@ namespace CodeBase.Infrastructure.FSM.State
 
         private async UniTaskVoid ConnectAsync()
         {
-            _systemEngine.Initialize();
-
             _clientWorld = ClientServerBootstrap.CreateClientWorld("ClientWorld");
             World.DefaultGameObjectInjectionWorld = _clientWorld;
+            _systemEngine.InitializeWorld(_clientWorld);
 
             var entityManager = _clientWorld.EntityManager;
             var connectEndpoint = NetworkEndpoint.Parse(DefaultServerAddress, DefaultPort);
